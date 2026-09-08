@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+test('HTTP boundary, four-seat setup, private views and reload persistence', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'eighty-http-test-'));
+  let child, port = '0', cookie = '', csrf = '';
+  const start = async () => new Promise((resolve, reject) => {
+    child = spawn(process.execPath, ['server/index.js'], { env: { ...process.env, PORT: port, EIGHTY_DATA_DIR: directory, QWEN_API_KEY: 'ignored-server-credential', QWEN_BASE_URL: 'https://example.invalid/v1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const timeout = setTimeout(() => reject(new Error('Server startup timed out')), 10000);
+    child.stdout.on('data', (chunk) => {
+      const match = chunk.toString().match(/http:\/\/127\.0\.0\.1:\d+/);
+      if (match) { port = new URL(match[0]).port; clearTimeout(timeout); resolve(match[0]); }
+    });
+    child.once('error', reject);
+  });
+  const stop = async () => { if (child && child.exitCode === null) await new Promise((resolve) => { child.once('exit', resolve); child.kill('SIGTERM'); }); };
+  try {
+    let url = await start();
+    const send = (path, value, headers = {}) => fetch(url + path, { method: 'POST', headers: { 'content-type': 'application/json', cookie, 'x-eighty-csrf': csrf, ...headers }, body: JSON.stringify(value) });
+    const get = path => fetch(url + path, { headers: { cookie } });
+    const initialResponse = await get('/api/state?seat=-1');
+    cookie = initialResponse.headers.get('set-cookie').split(';')[0];
+    assert.match(initialResponse.headers.get('set-cookie'), /HttpOnly; SameSite=Strict/);
+    const initial = await initialResponse.json(); csrf = initial.csrf;
+    assert.equal(initial.providers.qwen, false, 'web sessions never inherit server API keys');
+    assert.equal((await fetch(url)).status, 200);
+    assert.equal((await fetch(url + '/src/game.js')).status, 404);
+    assert.equal((await fetch(url + '/.env')).status, 404);
+    assert.equal((await fetch(url + '/vendor/three/0.185.1/three.module.min.js')).status, 200);
+    assert.equal((await fetch(url + '/vendor/three/0.185.1/three.core.min.js')).status, 200);
+    assert.equal((await fetch(url + '/node_modules/three/package.json')).status, 404);
+    assert.equal((await send('/api/presence', { visible: true })).status, 400);
+    assert.equal((await send('/api/start', {}, { origin: 'https://example.invalid' })).status, 403);
+    assert.equal((await send('/api/start', {}, { 'x-eighty-csrf': 'wrong' })).status, 403);
+    assert.equal((await send('/api/start', { seats: [] })).status, 400);
+    const seats = Array.from({ length: 4 }, (_, seat) => ({ kind: 'human', name: '玩家' + seat }));
+    assert.equal((await send('/api/start', { seats })).status, 200);
+    const spectator = await get('/api/state?seat=-1').then((r) => r.json());
+    assert.deepEqual(spectator.game.hand, []);
+    assert.equal('deck' in spectator.game, false);
+    assert.equal('seed' in spectator.game, false);
+    const seat = spectator.game.pending.seat;
+    const player = await get('/api/state?seat=' + seat).then((r) => r.json());
+    assert.ok(player.game.hand.length > 0);
+    const envelope = { seat, version: player.game.version, decisionId: player.game.pending.id, action: { type: 'declare', choice: 'pass' } };
+    assert.equal((await send('/api/action', envelope)).status, 200);
+    assert.equal((await send('/api/action', envelope)).status, 400);
+    const after = await get('/api/state?seat=-1').then((r) => r.json());
+    const replay = await get('/api/replay?seat=-1').then((r) => r.json());
+    assert.ok(replay.events.length);
+    assert.equal(JSON.stringify(replay).includes('"seed"'), false);
+    const otherResponse = await fetch(url + '/api/state?seat=-1');
+    const otherCookie = otherResponse.headers.get('set-cookie').split(';')[0], other = await otherResponse.json();
+    assert.equal(other.game, null);
+    assert.notEqual(other.csrf, csrf);
+    assert.equal((await send('/api/pause', { paused: true }, { cookie: otherCookie })).status, 403);
+    const secret = 'fixture-browser-secret-only';
+    assert.equal((await send('/api/connections/save', { name: 'My gateway', provider: 'qwen', baseUrl: 'https://example.com/v1', models: [{ id: 'custom-model', input: 1, output: 2 }], key: secret })).status, 200);
+    const configured = await get('/api/state?seat=-1').then(r => r.json());
+    const custom = configured.connections.find(p => p.name === 'My gateway');
+    assert.equal(custom.active, true);
+    assert.equal(JSON.stringify(configured).includes(secret), false);
+    assert.equal((await fetch(url + '/api/state?seat=-1', { headers: { cookie: otherCookie } }).then(r => r.json())).connections.some(p => p.id === custom.id), false);
+    await stop();
+    url = await start();
+    const restored = await get('/api/state?seat=-1').then((r) => r.json());
+    assert.equal(restored.game.id, after.game.id);
+    assert.equal(restored.game.version, after.game.version);
+    assert.equal(restored.paused, true);
+    assert.equal(restored.connections.find(p => p.id === custom.id).active, false);
+    assert.notEqual(restored.csrf, csrf); csrf = restored.csrf;
+    assert.equal((await send('/api/restart', {})).status, 200);
+    const restarted = await get('/api/state?seat=-1').then(r => r.json());
+    assert.notEqual(restarted.game.id, after.game.id);
+    assert.deepEqual(restarted.game.match.levels, [2, 2]);
+    assert.equal(restarted.archives.length, 1);
+  } finally { await stop(); await rm(directory, { recursive: true, force: true }); }
+});

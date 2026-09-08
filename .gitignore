@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+output/
+.playwright-cli/
+data/
+coverage/
+
+# Local credentials, certificates and diagnostics
+*.pem
+*.key
+*.log
+credentials*.json
+.public-release/

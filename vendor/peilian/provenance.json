@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/ChannonTian/80fen",
+  "commit": "96f69258b68495904f360a199738b161da4f4998",
+  "version": "v0.7.14",
+  "source": "index.html, first script block",
+  "sourceSha256": "3adfd263c30fe040e5c89076d059068dadb1428d17ecab51ce4b0e8a7c2cd282",
+  "coreSha256": "f0990a127892981fcca44bfd02eb91604134f9f877bd59538aa13bfe5095f8d8",
+  "purpose": "Unmodified strategy and private helpers; never the authoritative game engine."
+}
