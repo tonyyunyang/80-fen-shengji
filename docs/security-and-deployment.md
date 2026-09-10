@@ -55,7 +55,7 @@ This is a Node application with private server sessions, not a static GitHub Pag
 
 ## Verification and references
 
-Offline tests cover cookie isolation, CSRF, restart/expiry, credential-free checkpoints, ignored server keys, private and mapped addresses, DNS pinning, redirects, echoed-key redaction, custom pricing and late usage after game restart. Browser checks cover configuration, key clearing, model selection and restart controls. Gitleaks scans the public history in CI.
+Offline tests cover cookie isolation, CSRF (including malformed multi-byte headers), restart/expiry, credential-free checkpoints, ignored server keys, private and mapped addresses, DNS pinning, redirects, echoed-key redaction, custom pricing and late usage after game restart. Malformed CSRF values consistently receive HTTP 403; byte lengths are checked before the constant-time comparison. Browser checks cover configuration, key clearing, model selection and restart controls. Gitleaks scans the public history in CI.
 
 The isolation follows [OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html). Endpoint checks and redirect handling follow [OWASP SSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html); the transport uses [Node HTTPS](https://nodejs.org/api/https.html). Network restrictions should also be enforced by the hosting environment.
 

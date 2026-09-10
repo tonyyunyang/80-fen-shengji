@@ -168,3 +168,21 @@ test('hiding the page clears a released group even if its return animation has n
   assert.ok(f.nodes.every(node => !node.classList.contains('is-drag-source')));
   f.drag.destroy();
 });
+
+test('a viewport change cancels a valid drop even before a resize event arrives', () => {
+  for (const change of ['window', 'visual-height', 'scale']) {
+    const f = fixture();
+    f.window.visualViewport = { width: 1400, height: 900, scale: 1 };
+    f.pointer('pointerdown'); f.pointer('pointermove', 240, 180);
+    if (change === 'window') f.window.innerWidth = 800;
+    if (change === 'visual-height') f.window.visualViewport.height = 600;
+    if (change === 'scale') f.window.visualViewport.scale = 2;
+    f.pointer('pointerup', 240, 180);
+    assert.deepEqual(f.state.drops, [], change);
+    assert.deepEqual(f.state.toggles, [], change);
+    assert.deepEqual([...f.selection], [1, 3], change);
+    assert.equal(f.drag.active, false, change);
+    assert.equal(f.ghost(), undefined, change);
+    f.drag.destroy();
+  }
+});

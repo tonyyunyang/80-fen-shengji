@@ -1,5 +1,5 @@
 import { kimiCodeRequestOptions } from '/src/model-catalog.js';
-import { t, pick } from './i18n.js';
+import { pick } from './i18n.js';
 import { escapeHtml as escape } from './dom.js';
 const option=(id,label,selected)=>`<option value="${escape(id)}"${id===selected?' selected':''}>${escape(label)}</option>`;
 export const connectionFor=(seat,profiles=[])=>profiles.find(p=>p.id===(seat.connectionId||({qwen:'alibaba',openai:'openai',claude:'anthropic'})[seat.provider]));

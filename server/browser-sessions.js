@@ -74,7 +74,9 @@ export class BrowserSessions {
   }
   authorize(context, req) {
     const supplied = req.headers['x-eighty-csrf'];
-    if (typeof supplied !== 'string' || supplied.length !== context.csrf.length || !timingSafeEqual(Buffer.from(supplied), Buffer.from(context.csrf))) throw problem('页面验证已过期，请刷新后重试', 403);
+    const expected = Buffer.from(context.csrf);
+    const candidate = typeof supplied === 'string' ? Buffer.from(supplied) : null;
+    if (!candidate || candidate.length !== expected.length || !timingSafeEqual(candidate, expected)) throw problem('页面验证已过期，请刷新后重试', 403);
     const now = Date.now();
     context.mutations = context.mutations.filter(at => now - at < 60000);
     if (context.mutations.length >= 180) throw problem('操作过于频繁，请稍后重试', 429);

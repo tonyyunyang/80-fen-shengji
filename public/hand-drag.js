@@ -8,6 +8,7 @@ export function createHandDrag(root, {
   let gesture = null, ghost = null, dropBox = null;
   const returning = new Map();
   const target = () => document.getElementById('dropTarget');
+  const viewport = () => [window.innerWidth, window.innerHeight, window.visualViewport?.width, window.visualViewport?.height, window.visualViewport?.scale];
   const over = (x, y) => dropBox && x >= dropBox.left && x <= dropBox.right && y >= dropBox.top && y <= dropBox.bottom;
   const transform = (x, y, angle = 0) => 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + angle + 'deg)';
 
@@ -97,7 +98,7 @@ export function createHandDrag(root, {
     if (!ids.includes(id) || items.some(item => !item)) return;
     if (event.pointerType !== 'touch') event.preventDefault();
     gesture = { pointerId: event.pointerId, id, ids, items, rect: items.find(item => item.id === id).rect,
-      x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false, shift: event.shiftKey };
+      viewport: viewport(), x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false, shift: event.shiftKey };
     hover.freeze(); root.setPointerCapture(event.pointerId);
   }
 
@@ -150,6 +151,9 @@ export function createHandDrag(root, {
 
   function up(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
+    // Viewport metrics may change before the browser delivers its resize event.
+    // Never submit against the old drop geometry in that interval.
+    if (viewport().some((value, index) => value !== gesture.viewport[index])) { cancel(true); return; }
     const validTarget = gesture.dragging && over(event.clientX, event.clientY);
     const { current, held } = release();
     let played = false;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeDeck } from '../src/cards.js';
-import { createGame, drawCard, applyBid, closeBidding, observation, publicView, isBidding, applyAction, safeAction, assertConservation, nextDeal } from '../src/game.js';
+import { createGame, drawCard, applyBid, closeBidding, observation, publicView, isBidding, safeAction, assertConservation } from '../src/game.js';
 import { Session, validateConfig } from '../server/session.js';
 import { bidKey } from '../server/bidding.js';
 import { TOKEN_PLAN_MODELS, DEFAULT_TOKEN_PLAN_MODEL } from '../src/model-catalog.js';

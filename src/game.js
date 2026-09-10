@@ -1,4 +1,4 @@
-import { makeDeck, shuffle, randomSource, cutFirst, effectiveSuit, sortedHand } from './cards.js';
+import { makeDeck, shuffle, randomSource, cutFirst, sortedHand } from './cards.js';
 import { DEFAULT_RULES, RULESET_ID, declarationOptions, resolveCards, classify, followError, adjudicateThrow, resolveTrick, scoreDeal, advanceMatch, rebelEligible, safeFollow } from './rules.js';
 
 const physicalCards = makeDeck();
