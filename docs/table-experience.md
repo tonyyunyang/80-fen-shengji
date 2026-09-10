@@ -12,7 +12,7 @@ Dialogs keep their heading and close button visible while the content scrolls. E
 
 Each API seat has an inline Add or Manage connection button, including a clear explanation when no connection exists. The connection dialog identifies that seat. Saving links the connection to the originating seat; closing returns keyboard focus to its model picker. An unavailable previous model is cleared instead of silently substituting another model. The shared API connections button remains available in the right panel.
 
-New game opens a separate seat and table setup, initialized from the saved draft. General Settings offers hand size, table-card size, text size, suit palette, motion, texture, hints, drag-to-play and optional synthesized sound/volume. Starting another game while one exists requires confirmation and resets levels to 2; it uses the draft seat/rule settings. Next deal preserves the current table's seats, rules and match progression. Settings do not silently alter that existing table.
+New game opens a separate seat and table setup, initialized from the saved draft. General Settings offers hand size, table-card size, text size, suit palette, motion, texture, Full/Soft/Off light and effects, hints, drag-to-play and optional synthesized sound/volume. Starting another game while one exists requires confirmation and resets levels to 2; it uses the draft seat/rule settings. Next deal preserves the current table's seats, rules and match progression. Settings do not silently alter that existing table.
 
 Seats, provider connections, model choices, prompt language, optional endgame analysis, rule options, request/output/deadline limits, suit colors and card motion are configured outside the game. In-game controls are Menu/Pause, Notebook, Learn, card selection and confirmation. Pause offers Resume, Rules, Autoplay and Main menu. Changing credentials retains the existing server-side pause/cancellation behavior.
 
@@ -48,6 +48,18 @@ Dealing flights and trick collection use the actual stack, seat-back and hand po
 
 The result panel displays the winning team, trick points, kitty calculation, updated levels and the revealed kitty. It offers Next deal or Main menu. Passing A is labeled as completing the match, not as a joker rank.
 
+## Light, motion and sound
+
+The arcade finish keeps the same felt table, deck atlas and HTML controls. Original procedural ink moves behind the table; paper edges, brass rails, a faint felt emblem and optional scanlines add depth. Menu cards float independently and catch a foil glint. Selected and carried cards get a brief surface glint without changing the hover controller or the carried identities.
+
+Public plays land from their owner's direction. Pairs get a small burst; tractors get a short named accent. Accepted declarations light up the revealed cards and trump tile. A completed trick highlights its winner, shows the actual points and sends a few sparks toward the score ticket when the attackers score. Defensive captures travel to the winner instead. The ticket's progress strip represents the 80-point threshold; the printed total remains authoritative. The result opens after the existing hold/flip/collect sequence, with a brief visual count-up and a team-appropriate finish. Its accessible score is the final total throughout.
+
+Full effects is the default. Soft lowers background resolution and cadence, omits particles and foil, and keeps simple event accents. Off removes the animated background and event flourishes; normal card handling still follows the separate Animation setting. Turning Animation off, or enabling system reduced motion, stops decorative motion and keeps all controls usable. The background has a CSS fallback when WebGL is unavailable or its context is lost. Its drawing buffer fits within 960×600 in Full or 640×600 in Soft, with elapsed-time drawing caps of 30 and 20 frames per second. These are render budgets, not device performance guarantees. Hidden tabs and paused tables stop drawing; game rules and API timing never wait for a frame.
+
+`effect-flow.js` consumes only an explicit list of public events and the shared dealt count. It never reads bidding eligibility, private draws, hidden burial cards, model work or usage records. It suppresses historical effects after loading, switching viewers, redealing, hiding or pausing; rapid updates coalesce. The effect layer contains at most 80 decorative elements and clears on pause, visibility changes and navigation.
+
+Sound remains off by default and requires a user gesture when enabled. Local synthesis supplies paper rustles, wooden play taps, declaration notes, capture chimes and short win/finish phrases. Sounds follow the same public-event boundary. No music or audio files are downloaded.
+
 ## Learning, records and privacy
 
 Notebook tabs show factual card memory, public history and permitted usage records. Current-deal usage remains deferred during continuous play, including while menus or the notebook are open. Previous-game usage remains available. The atlas supplies visible joker pictures in the notebook too.
@@ -58,7 +70,7 @@ The existing cookie/CSRF boundary, session-owned in-memory keys, private observa
 
 ## Rendering and retirement
 
-Cards and controls are accessible HTML. Pixel portraits are small SVGs; court art is one local WebP atlas; rank and suit glyphs are small code-native SVGs. Symmetric pip fields reserve both index corners; court figures keep their 2:3 proportions and are centered. CSS crops atlas cell edges and blends the paper without changing the retained source atlas. CSS handles the felt, buttons and short card animations. Reduced motion disables decorative movement. No WebGL dependency is required. Optional audio is synthesized locally only after a user gesture.
+Cards and controls are accessible HTML. Pixel portraits are small SVGs; court art is one local WebP atlas; rank and suit glyphs are small code-native SVGs. Symmetric pip fields reserve both index corners; court figures keep their 2:3 proportions and are centered. CSS crops atlas cell edges and blends the paper without changing the retained source atlas. CSS and short Web Animations handle surface effects; optional native WebGL draws only the background. There is no renderer package dependency. Reduced motion disables decorative movement. Optional audio is synthesized locally only after a user gesture.
 
 Visual reference: [Balatro official press kit](https://www.playbalatro.com/press-kit/). Its card hierarchy and pixel details informed the refinements; the retained generated atlas remains unchanged.
 

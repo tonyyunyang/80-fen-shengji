@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Contributing](../CONTRIBUTING.en.md)
 
-Eighty is a small Node application with a plain JavaScript/HTML/CSS client. There is no frontend build step, database service or WebGL dependency. `public/index.html` is the only production interface.
+Eighty is a small Node application with a plain JavaScript/HTML/CSS client. There is no frontend build step, database service or graphics package dependency. Optional native WebGL paints the decorative background; the complete game also works with a static CSS background. `public/index.html` is the only production interface.
 
 ## Boundaries
 
@@ -27,7 +27,8 @@ flowchart LR
 | `src/providers.js`, `src/*context.js`, `src/expert-*.js` | Permitted observations, structured action contracts and model guidance. |
 | `src/analysis-worker.js`, `src/endgame-estimates.js` | Bounded hypothetical endgames off the server event loop. |
 | `public/app.js`, `public/pixel-view.js` | Menu/setup flow, the current table and public state rendering. |
-| `public/hand-*.js`, `public/table-*.js` | Stable hover, one-card drag, selection, layout, animation timing and sound. |
+| `public/hand-*.js`, `public/table-*.js` | Stable hover, group drag, selection, layout, animation timing and sound. |
+| `public/atmosphere.js`, `public/effect-flow.js`, `public/effects.css` | Bounded procedural background and decorative responses to public events. No engine actions or provider work. |
 | `public/card-art.js`, `public/card-glyphs.js`, `public/wordmark.js` | The actual deck and original drawn lettering. |
 | `test/` | Offline regression examples, HTTP isolation, rules, provider parsing and timing. |
 

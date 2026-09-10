@@ -13,8 +13,13 @@ Eighty's visual language combines green felt, a curved rail, warm paper, clear s
 - `public/card-art.js`: assembles indices, pips, court illustrations and jokers.
 - `public/assets/cards/pixel-court.webp`: the approved AI-generated 4×4 court/joker/back atlas. Keep this source intact when changing layout.
 - `public/pixel-view.js`, `public/pixel.css`: portraits, paper, felt, shadows and table details.
+- `public/atmosphere.js`: original procedural ink shader, with bounded native WebGL rendering and a static CSS fallback.
+- `public/effects.css`, `public/table-effects.js`, `public/effect-flow.js`: original foil gradients, arcade surfaces, public-event flourishes and their presentation-only timing.
+- `public/table-sound.js`: original synthesized paper, taps and short musical accents; no sampled audio assets.
 
 Both 25-card and 33-card hands use the same renderer. Hover moves the painted faces while hit testing stays on stable slots. Court art keeps its proportions; pip fields leave space for both index corners.
+
+The arcade pass studies the [official Balatro press kit](https://www.playbalatro.com/press-kit/), including its [card-reveal animation](https://www.playbalatro.com/press-kit/Gifs/Balatro_gif_1%20.gif) and [gameplay animation](https://www.playbalatro.com/press-kit/Gifs/Balatro_gif_2%20.gif). Flowing ink, foil light and the cadence of score accents inform the implementation. All added shader, surface, particle and sound code is authored for Eighty; this pass adds no downloaded game assets and keeps the existing atlas and title source intact.
 
 ## Contributing art
 

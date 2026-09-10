@@ -40,6 +40,12 @@ Turn off **Drag to play** in General settings if you prefer dragging only to sel
 
 **Notebook** shows public card memory and completed tricks. **Learn** offers short optional exercises: skip them freely; they do not change scores or call a model.
 
+## Set the atmosphere
+
+In **Settings → Light & effects**, choose **Full** for flowing ink, card glints and scoring sparks, **Soft** for quieter accents, or **Off** for a static backdrop. The separate **Animation** switch makes the table still; your system's reduced-motion setting is also respected. **Retro screen texture** controls the scanlines. **Table sounds** adds paper taps and short scoring chimes after your next interaction; it is off by default, with an independent volume control.
+
+Trick stamps show who won and the actual points in that trick. Only attacker captures advance the score ticket toward 80. The round reveal counts up visually; the final total and kitty calculation still determine the result.
+
 ## Continue or start again
 
 The in-game menu offers Pause, Autoplay, Rules and Main menu. Refreshing the same browser tab reconnects to its table. Next deal retains the table settings; New game starts a fresh match at level 2. A server restart restores the saved game paused and clears session API keys.
