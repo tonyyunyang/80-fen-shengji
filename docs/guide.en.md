@@ -34,7 +34,7 @@ Multiple humans can share one device, with a privacy curtain between hands. This
 | Space / Enter | Select / confirm. |
 | Escape | Cancel a drag or selection, then open Pause. |
 
-![Select two cards, drag either one, cancel to return the group, then drag again to play](media/group-drag.gif)
+![Select a tractor, drag any selected card to play all four, then collect the trick](media/arcade-gameplay-en.gif)
 
 Turn off **Drag to play** in General settings if you prefer dragging only to select. Burial always requires the confirmation button.
 

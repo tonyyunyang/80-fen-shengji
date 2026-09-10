@@ -8,6 +8,7 @@
 | Independent engine, controller and browser table | Eighty project, [Apache-2.0](../LICENSE). |
 | Court cards, jokers and card backs | AI-generated illustrations made for Eighty, rendered from [the project atlas](../public/assets/cards/README.md). |
 | Wordmarks, suit/rank glyphs and portraits | Project artwork, drawn in SVG/code. |
+| Flowing ink, foil, particles and synthesized sound | Original Eighty shader, surface, animation and audio code; no imported game textures, effects or audio samples. See [the visual system](art.md). |
 | AI-assisted development | GPT-6 Astra. Contributions still require review and testing. |
 | Visual inspiration | [Balatro](https://www.playbalatro.com/). Eighty is independent and does not ship official Balatro code or artwork. |
 | Address parsing | [ipaddr.js](https://github.com/whitequark/ipaddr.js), MIT license, supplied with the installed dependency. |

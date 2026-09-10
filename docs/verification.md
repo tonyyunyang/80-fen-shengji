@@ -1,6 +1,6 @@
 # Verification
 
-Current version: the integrated pixel game, September 10, 2026. Live AI outcomes and their limits are separate in [the current study](research/ai-evaluation.md).
+Current packaged version: **0.3.0**, September 10, 2026: the pixel table with selected-group dragging and arcade effects. Live AI outcomes and their limits are separate in [the current study](research/ai-evaluation.md).
 
 ## Offline gates
 
@@ -41,10 +41,14 @@ Curated screenshots and GIFs live in `docs/media/`, with recording notes in [med
 
 ## Scope limits
 
-This release integrates the approved interface and game flow. It does not establish stronger AI play, provide online multiplayer rooms, or include a full audio/tutorial package. These are listed as future work in [game direction](roadmap.md).
+This release integrates the approved interface, group play, visual effects and opt-in synthesized sound. It does not establish stronger AI play or provide online multiplayer rooms, background music or a full tutorial. Further directions are listed in [game direction](roadmap.md).
 
 
 ## Public release checks
+
+The 0.3.0 package and lockfile identify the same release as the bilingual READMEs, changelog and press kit. Current menu captures and Chinese/English gameplay previews show the merged arcade renderer; their sources remain in ignored output, and the published media stay within the 6 MiB per-file budget. The press-kit archive contains only curated documentation/media and license notices. Earlier release media and tags remain intact.
+
+### 0.2.0 baseline
 
 The 0.2.0 showcase uses actual anonymous local-practice games. Both twelve-second GIFs show real hover, pair selection, a single-card drag and trick collection, with zero API requests and a clean console. Menu screenshots cover Chinese and English; the card sheet and social image use the project's live card and wordmark components.
 
@@ -62,7 +66,7 @@ The follow-up interaction uses the same engine and interface. Browser checks exe
 - The complete table and carried fan also fit 390×844, 560×740 and 1920×1080. A 25-card mixed-suit selection stays a bounded fan and returns intact. With drag-to-play disabled, drops only select and the Play button still submits a group.
 - A mixed human/practice/simulated-API deal completes and proceeds to the next deal with zero paid requests and no browser errors. New game confirmation starts a fresh match at level 2, and the English settings explain the group interaction correctly.
 
-[The recorded group gesture](media/group-drag.gif) uses the real client: click both cards, drag from either member, cancel once and then play the pair. It uses local practice opponents and zero API requests.
+[The earlier group gesture recording](media/group-drag.gif) uses the real client before the arcade finish: click both cards, drag from either member, cancel once and then play the pair. It uses local practice opponents and zero API requests. Current visuals are shown in the [0.3.0 gameplay clip](media/arcade-gameplay.mp4).
 
 Raw screenshots, browser reports and recordings belong in ignored `output/playwright/group-drag/`. The controller's offline regression examples cover physical selection identity, unrelated pointers, cancellation, redraws, missing cards and rapid re-grabs.
 
@@ -78,4 +82,4 @@ The effects pass was checked on the real client with synthetic local saves and p
 - Result panels fit 390×844, 560×740 and 1920×1080. The 33-card hand with maximum card/text settings fit 390×844, 560×740 and 1280×720. English settings retained group-play instructions. Console and page-error collectors reported no errors.
 - Nine offline effect-flow regressions cover public-event allowlisting, history suppression, scope changes, shared dealing counts, coalescing, collection timing, overlay/pause cleanup, authoritative result attribution and preference migration.
 
-Raw captures, fixture generators, reports and the gameplay preview stay in ignored `output/playwright/arcade-polish/`. In this browser, taking a screenshot during a held pointer gesture releases pointer capture; drag assertions therefore sample the frozen hand after pointer-down and use video for the uninterrupted gesture. The release correctly cancels the carried cards, and no production input behavior was altered for the capture tool.
+The [curated gameplay preview](media/arcade-gameplay.mp4) is published with the release. Raw captures, fixture generators and reports stay in ignored `output/playwright/arcade-polish/`; release-media work stays in `output/playwright/release-0.3.0/`. In this browser, taking a screenshot during a held pointer gesture releases pointer capture; drag assertions therefore sample the frozen hand after pointer-down and use video for the uninterrupted gesture. The release correctly cancels the carried cards, and no production input behavior was altered for the capture tool.

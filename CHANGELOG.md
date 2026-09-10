@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 · 2026-09-10 · Arcade table and group play
 
 - An arcade finish adds original flowing ink, foil glints, richer paper/brass surfaces, directional card landings and public declaration/trick accents.
 - Scoring sparks travel toward their actual recipient, the score ticket shows progress toward 80, and the round reveal includes an accessible count-up and team-aware celebration.
@@ -8,6 +8,7 @@
 - Drag any selected card to carry and play the complete selection. Unselected cards still drag individually; the Play button remains available.
 - Carried groups gather into a short fan with a count badge and a legality hint. Invalid drops and cancellations return every card to its own slot while keeping the selection.
 - Preserve stable hover and gesture identities across public redraws, with immediate cancellation on resize and reduced-motion support. Burial continues to require explicit confirmation.
+- Refresh the Chinese/English READMEs, current gameplay media, press kit, package metadata and player documentation for the merged arcade table. The existing deck atlas, rules and provider behavior remain unchanged.
 
 ## 0.2.0 · 2026-09-10 · The pixel table
 
