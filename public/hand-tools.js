@@ -24,3 +24,10 @@ export function selectPair(hand, selected, id) {
   if (face) for (const card of hand) if (card.suit === face.suit && card.rank === face.rank) next.add(card.id);
   return next;
 }
+
+// Preserve physical identities and hand order, even for a scattered selection.
+// An unselected card never picks up an unrelated selected group.
+export function dragCardIds(hand, selected, id) {
+  if (!hand.some(card => card.id === id)) return [];
+  return selected.has(id) ? hand.filter(card => selected.has(card.id)).map(card => card.id) : [id];
+}

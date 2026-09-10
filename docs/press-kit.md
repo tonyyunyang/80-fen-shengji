@@ -34,6 +34,7 @@
 
 - [Chinese main menu](media/menu-zh.png) / [English main menu](media/menu-en.png)
 - [Chinese gameplay GIF](media/gameplay-zh.gif) / [English gameplay GIF](media/gameplay-en.gif)
+- [Selected-group drag interaction](media/group-drag.gif)
 - [Card artwork](media/cards.png)
 - [Social preview image](media/social-card.png)
 - [Full table screenshot](images/table.png)

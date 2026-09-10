@@ -4,8 +4,8 @@ Current version: the integrated pixel game, September 10, 2026. Live AI outcomes
 
 ## Offline gates
 
-- `npm test`: **173 passing tests**.
-- `npm run check`: **86 modules** checked; preserved Peilian checksum verified.
+- `npm test`: **182 passing tests**.
+- `npm run check`: **87 modules** checked; preserved Peilian checksum verified.
 - Coverage retains deterministic rules, all physical card identities, legal following, private observations, cookie/CSRF isolation, provider deadlines and late accounting.
 - New checks cover one-row geometry through 25→33→25, perspective/partner placement, all twelve court images and both jokers, correct team result labels, completed-match levels, and a learning recap after all cards have been played.
 
@@ -17,7 +17,7 @@ The approved art is rendered by the real game client. Controlled fixtures use th
 - A fresh browser opens the menu; Rules, Credits, Settings and the 54-face card gallery work.
 - Ordinary continuous dealing and bidding reach the human's real hand.
 - The real dealer's 33 cards remain one row. All 33 cards are reached correctly in both hover directions.
-- Dragging with other cards selected creates exactly one ghost; other hand transforms and resting geometry remain unchanged. Escape cancels without submission.
+- Dragging an unselected card with other cards selected carries only that card. Starting on a selected card carries the full selection in one ghost container; all other hand transforms remain fixed. Escape cancels without submission.
 - Confirming eight buried cards produces the real 25-card hand in one row. Space/keyboard selection and human submission work.
 - A mixed human/Peilian/simulated-API deal completes with zero paid requests. Trick collection and the real score/result panel are displayed.
 - Notebook history uses actual public events. Live learning and completed-deal recap questions leave game version, score and pause state unchanged.
@@ -48,4 +48,20 @@ This release integrates the approved interface and game flow. It does not establ
 
 The 0.2.0 showcase uses actual anonymous local-practice games. Both twelve-second GIFs show real hover, pair selection, a single-card drag and trick collection, with zero API requests and a clean console. Menu screenshots cover Chinese and English; the card sheet and social image use the project's live card and wordmark components.
 
-The main table's source remains the approved version. The only rendering correction during packaging is scoped to main-menu court-art positioning. `npm run check` also validates local documentation links, media size limits and the single HTML entry point. CI tests Node.js 22 and 24 and scans complete publication history for secrets.
+The 0.2.0 packaging retained the approved table; its only rendering correction was scoped to main-menu court-art positioning. `npm run check` also validates local documentation links, media size limits and the single HTML entry point. CI tests Node.js 22 and 24 and scans complete publication history for secrets.
+
+## Selected-group dragging
+
+The follow-up interaction uses the same engine and interface. Browser checks exercise a human seat with local practice and simulated API seats, with paid allowance fixed at zero.
+
+- Either card in a selected pair carries both physical cards; a middle card carries the complete four-card tractor. Valid lead and follow drops each send one action containing exactly the carried identities.
+- Unselected cards move alone even when a pair is selected. A single in a pair follow, a three-card count mismatch and a wrong-suit group send no play action and retain the complete selection.
+- Escape, a quick outside drop and resize leave game state and selection unchanged. Eight selected kitty cards return to the hand; only the Bury button confirms the 33-to-25 transition.
+- Same-turn server redraws preserve table geometry, the drop target and transient source marks. Selection keys cannot mutate a held group. A new grab during a return cannot be cleaned up by the old animation.
+- At 1024×600 the full tractor interaction works in scaled coordinates. Both hover directions still reach all 33 cards at 1280×720. Reduced motion retains group dragging without gathering, tilt or return animation.
+- The complete table and carried fan also fit 390×844, 560×740 and 1920×1080. A 25-card mixed-suit selection stays a bounded fan and returns intact. With drag-to-play disabled, drops only select and the Play button still submits a group.
+- A mixed human/practice/simulated-API deal completes and proceeds to the next deal with zero paid requests and no browser errors. New game confirmation starts a fresh match at level 2, and the English settings explain the group interaction correctly.
+
+[The recorded group gesture](media/group-drag.gif) uses the real client: click both cards, drag from either member, cancel once and then play the pair. It uses local practice opponents and zero API requests.
+
+Raw screenshots, browser reports and recordings belong in ignored `output/playwright/group-drag/`. The controller's offline regression examples cover physical selection identity, unrelated pointers, cancellation, redraws, missing cards and rapid re-grabs.
