@@ -24,6 +24,18 @@ A modern desktop browser is the main target. The table scales to the window and 
 
 主要面向电脑浏览器。窄窗口会缩小整桌；手机并非主要体验目标。
 
+### Can I turn down the effects? / 能减少特效吗？
+
+Use **Settings → Light & effects**: Full shows the flowing background, foil and scoring particles; Soft keeps lighter accents; Off uses a static backdrop. The separate Animation switch and your system's reduced-motion preference stop decorative motion. The game also works without WebGL using its CSS background.
+
+在「设置 → 光影与特效」选择华丽、柔和或关闭。关闭「动态效果」或启用系统减少动态效果即可使用静态画面；浏览器不支持 WebGL 时也能正常玩。
+
+### Why is there no sound? / 为什么没有声音？
+
+Table sounds are off by default. Enable them in Settings, adjust the volume, then interact with the page to unlock browser audio. Paper taps, declaration notes, capture chimes and round-result phrases are synthesized locally. There is no background music or downloaded audio pack.
+
+音效默认关闭。在设置中开启「牌桌音效」、调整音量，再操作一次页面即可启用。纸牌、亮主、收墩和结算声音在本地合成，目前没有背景音乐。
+
 ### Why are there 33 cards? / 为什么拿到 33 张？
 
 The dealer takes the eight-card kitty after receiving 25 cards, then buries eight to return to 25. This is part of the rules, not a display mode. Both counts use the same single-row hand.
@@ -47,6 +59,12 @@ Local practice bots work without any service. External models vary; their legal 
 Start the Node server and open its HTTP address; opening `public/index.html` as a local file does not run the game. If the port is already occupied, stop the other instance or choose another port (`PORT=5174 npm start` in a POSIX shell). After an update, reload the browser page.
 
 请先启动 Node 服务，再打开本机 HTTP 地址，不要直接双击 HTML 文件。端口被占用时可停止旧实例或使用另一个端口；更新后刷新页面。
+
+### How do I update? / 如何升级？
+
+Stop the server, switch to `main`, run `git pull --ff-only` and `npm ci --ignore-scripts`, then restart with `npm start` and reload the page. Keep your existing `data/` and browser cookie to reconnect to local saves. Session keys must be entered again after the server restarts. The [changelog](../CHANGELOG.md) records each packaged version.
+
+停止服务后切回 `main`，拉取更新、安装锁定依赖，再重启并刷新页面。保留 `data/` 和原浏览器 cookie 可继续存档；重启后 API key 需要重新填写。
 
 ### How can I help? / 怎么参与？
 

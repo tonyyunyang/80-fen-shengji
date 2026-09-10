@@ -2,9 +2,11 @@
 
 [Press kit](press-kit.md) · [Credits](credits.md) · [Media files](media/README.md)
 
-Eighty's visual language combines green felt, a curved rail, warm paper, clear suit colors and small pixel characters. The deck and title lettering belong to the same interface used during play.
+Eighty's visual language combines green felt, a curved brass rail, warm paper, clear suit colors and small pixel characters. The 0.3.0 finish adds flowing ink, foil glints and public-event effects around the same deck and title lettering used during play.
 
 ![Actual card artwork](media/cards.png)
+
+[Current table](media/arcade-table.png) · [Chinese gameplay](media/arcade-gameplay.mp4) · [English gameplay](media/arcade-gameplay-en.mp4)
 
 ## Source of the artwork
 

@@ -1,6 +1,6 @@
 # 文档 · Documentation
 
-Eighty 是免费开源的八十分浏览器游戏。The approved pixel table is the only runtime interface.
+Eighty 是免费开源的八十分浏览器游戏。当前版本 **0.3.0** 加入整组拖牌与街机风格光影特效。The **0.3.0** release combines group dragging with an animated pixel table; the approved table remains the only runtime interface.
 
 ## 开始玩 / Start playing
 
@@ -18,7 +18,7 @@ Eighty 是免费开源的八十分浏览器游戏。The approved pixel table is 
 - [Player protocol](player-protocol.md): observations, legal actions and model decisions.
 - [Continuous dealing](continuous-dealing.md): private bidding and receipt-time validation.
 - [AI](ai.md) and [evaluation](research/ai-evaluation.md): current strategy, optional connections and evidence limits.
-- [Table experience](table-experience.md): interaction and accessibility behavior.
+- [Table experience](table-experience.md): interaction, effects, sound and accessibility behavior.
 - [Security and deployment](security-and-deployment.md): sessions, credentials and hosting.
 - [Art](art.md), [press kit](press-kit.md) and [credits](credits.md): visual system, media and provenance.
 - [Roadmap](roadmap.md), [changelog](../CHANGELOG.md) and [verification](verification.md).

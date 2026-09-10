@@ -1,6 +1,6 @@
 {
   "name": "eighty-shanghai",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,7 +16,7 @@
   "dependencies": {
     "ipaddr.js": "2.5.0"
   },
-  "description": "A free, open-source Chinese partnership card game with a pixel-art browser table.",
+  "description": "A free, open-source Chinese partnership card game with animated pixel art, group dragging and local practice bots.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
