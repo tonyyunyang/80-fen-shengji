@@ -30,3 +30,5 @@
  .tools{justify-content:flex-end}
  #connectionForm input,#connectionForm select,#connectionForm textarea{font-size:16px}
 }
+.discover-button{margin:0 0 10px;min-height:44px}.connection-feedback{min-height:20px;color:#6a4828;font-size:13px;line-height:1.6}.discovered-prices details{border:1px solid #c9b998;padding:12px;border-radius:4px;font-size:12px}.discovered-prices p{font-size:12px;display:flex;justify-content:space-between;gap:12px}.discovered-prices summary{cursor:pointer}.seat-ai-options{font-size:12px;margin-top:14px;border-top:1px solid #73857566;padding-top:12px}.seat-ai-options summary{cursor:pointer}#connectionForm input,#connectionForm select,#connectionForm textarea{border-radius:3px;font-size:13px}.connection-choice{border-radius:3px}.connection-choice.selected{border:2px solid #a68657;background:#eadfbc}
+#apiConnectionCount:empty{display:none}#apiConnectionCount{color:#304637}

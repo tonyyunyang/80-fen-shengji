@@ -91,4 +91,4 @@ The 100-request table allowance remains shared across the three API seats. Do no
 - Keep card-conservation, declaration-strength, scoring, privacy, replay, and existing card-play deadline checks passing.
 - Then verify a human plus three API fixtures in desktop and narrow browser layouts, and run a bounded live check if needed. Host the user-facing play page only after these checks pass.
 
-The concurrency change has its own feature branch and regression tests in `test/continuous.test.js`. The earlier proposal remains available in Git history. Continue validating changes with actual play feedback.
+Regression tests in `test/continuous.test.js` cover this behavior. Continue validating changes with actual play feedback.

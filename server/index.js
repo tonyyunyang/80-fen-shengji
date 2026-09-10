@@ -3,7 +3,9 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { BrowserSessions } from './browser-sessions.js';
 const root = resolve(import.meta.dirname, '..');
-try { process.loadEnvFile(join(root, '.env')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+// Web tables are BYOK. CLI evaluators may load .env, but the web process must
+// neither load that credential file nor retain deployment provider keys.
+for (const name of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'QWEN_API_KEY', 'KIMI_API_KEY']) delete process.env[name];
 const dataDirectory = resolve(root, process.env.EIGHTY_DATA_DIR || 'data');
 await mkdir(dataDirectory, { recursive: true });
 const publicOrigin = process.env.EIGHTY_PUBLIC_ORIGIN || '';
@@ -15,11 +17,11 @@ const sessions = new BrowserSessions({ directory: join(dataDirectory, 'browser-s
   capacity: Math.max(1, Math.min(256, Number(process.env.EIGHTY_MAX_SESSIONS) || 32)) });
 let legacy = null;
 if (!publicOrigin) try { legacy = JSON.parse(await readFile(join(dataDirectory, 'session.json'), 'utf8')); } catch {}
-const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp' };
 const json = (res, status, body) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' }); res.end(JSON.stringify(body)); };
 const body = async (req) => {
   let size = 0, result = '';
-  for await (const chunk of req) { size += chunk.length; if (size > 32768) throw new Error('请求过大'); result += chunk; }
+  for await (const chunk of req) { size += chunk.length; if (size > 131072) throw new Error('请求过大'); result += chunk; }
   return JSON.parse(result || '{}');
 };
 const server = http.createServer(async (req, res) => {
@@ -63,7 +65,11 @@ const server = http.createServer(async (req, res) => {
         session.restore(legacy); legacy = null;
       }
       else if (url.pathname === '/api/connections/save') {
-        context.connections.save(data); if (session.state) session.pause(true, 'credentials'); else session.save();
+        const id = context.connections.save(data); if (session.state) session.pause(true, 'credentials'); else session.save();
+        return json(res, 200, { ok: true, id });
+      }
+      else if (url.pathname === '/api/connections/discover') {
+        return json(res, 200, await context.connections.discover(data));
       }
       else if (url.pathname === '/api/connections/forget' || url.pathname === '/api/connections/delete') {
         if (url.pathname.endsWith('/delete')) context.connections.remove(data.id); else context.connections.forget(data.id);
@@ -91,15 +97,9 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { entries: context.auditRows, stats: current.stats, archives: current.archives });
     }
     if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
-    const allowedSources = ['/src/cards.js', '/src/rules.js', '/src/training.js', '/src/player-settings.js', '/src/model-catalog.js'];
+    const allowedSources = ['/src/cards.js', '/src/notebook.js', '/src/rules.js', '/src/training.js', '/src/player-settings.js', '/src/model-catalog.js'];
     let file;
-    const threeFiles = {
-      '/vendor/three/0.185.1/three.module.min.js': 'build/three.module.min.js',
-      '/vendor/three/0.185.1/three.core.min.js': 'build/three.core.min.js',
-      '/vendor/three/0.185.1/LICENSE': 'LICENSE',
-    };
-    if (Object.hasOwn(threeFiles, url.pathname)) file = join(root, 'node_modules/three', threeFiles[url.pathname]);
-    else if (allowedSources.includes(url.pathname)) file = join(root, url.pathname);
+    if (allowedSources.includes(url.pathname)) file = join(root, url.pathname);
     else {
       const name = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
       file = resolve(root, 'public', name);

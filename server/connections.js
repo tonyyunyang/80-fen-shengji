@@ -1,24 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import { TOKEN_PLAN_MODELS, isTokenPlanEndpoint } from '../src/model-catalog.js';
 import { providerUrl, safeProviderFetch } from './safe-network.js';
+import { discoverModels } from './model-discovery.js';
 
 const modelId = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/;
-const baseProfiles = () => [
-  { id: 'alibaba', name: 'Alibaba Token Plan', provider: 'qwen', baseUrl: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
-    models: TOKEN_PLAN_MODELS.map(m => ({ id: m.id, label: m.label, input: m.input, output: m.output, builtin: true })) },
-  { id: 'openai', name: 'OpenAI Responses', provider: 'openai', baseUrl: 'https://api.openai.com/v1', models: [] },
-  { id: 'anthropic', name: 'Anthropic Messages', provider: 'claude', baseUrl: 'https://api.anthropic.com', models: [] },
-];
 const rate = value => value === undefined || value === null || value === '' ? null : Number(value);
 export class Connections {
   constructor({ saved = [], allowLoopback = false, fetchImpl } = {}) {
     this.allowLoopback = allowLoopback;
     this.fetchImpl = fetchImpl || safeProviderFetch({ allowLoopback });
-    this.profiles = new Map(baseProfiles().map(p => [p.id, p]));
+    this.profiles = new Map();
     this.keys = new Map();
     for (const profile of saved) {
       try {
-        if (!this.profiles.has(profile.id) && !/^[0-9a-f-]{36}$/.test(profile.id)) continue;
+        if (!['alibaba','openai','anthropic'].includes(profile.id) && !/^[0-9a-f-]{36}$/.test(profile.id)) continue;
+        // Empty shipped presets were not user connections. Keep only configured
+        // legacy profiles so old checkpoints can still bind their seats.
+        if (['alibaba','openai','anthropic'].includes(profile.id) && (!profile.models?.length || profile.models.every(m=>m.builtin))) continue;
         const validated = this.validate(profile); validated.id = profile.id; this.profiles.set(profile.id, validated);
       } catch {}
     }
@@ -29,7 +26,7 @@ export class Connections {
     const name = String(input.name || '').trim(), baseUrl = String(input.baseUrl || '').trim().replace(/\/+$/, '');
     if (!name || name.length > 50 || /[\r\n]/.test(name)) throw new Error('连接名称应为 1–50 个字符');
     providerUrl(baseUrl, this);
-    if (!Array.isArray(input.models) || input.models.length > 32) throw new Error('每个连接最多配置 32 个模型');
+    if (!Array.isArray(input.models) || input.models.length > 256) throw new Error('每个连接最多配置 256 个模型');
     const models = input.models.map(m => {
       if (typeof m?.id !== 'string' || !modelId.test(m.id)) throw new Error('模型 ID 只能包含字母、数字及 . _ : / -');
       const inputRate = rate(m.input), outputRate = rate(m.output);
@@ -55,8 +52,17 @@ export class Connections {
     return profile.id;
   }
   forget(id = null) { if (id) this.keys.delete(id); else this.keys.clear(); }
+  async discover(input) {
+    if (this.discovering) throw new Error('正在读取模型，请稍候');
+    const profile=this.validate({...input,models:[]}),old=this.profiles.get(input.id);
+    const key=input.key || (old?.baseUrl===profile.baseUrl&&old?.provider===profile.provider?this.keys.get(input.id):null);
+    if (typeof key!=='string'||key.length<8||key.length>4096||/[^\x21-\x7e]/.test(key)) throw new Error('请先填写这个地址对应的 API key');
+    if (JSON.stringify(profile).includes(key)) throw new Error('请只在密钥栏填写 API key');
+    this.discovering=true;
+    try { return await discoverModels(profile,key,this.fetchImpl); }
+    finally { this.discovering=false; }
+  }
   remove(id) {
-    if (['alibaba', 'openai', 'anthropic'].includes(id)) { this.forget(id); return; }
     this.keys.delete(id); this.profiles.delete(id);
   }
   snapshot() { return [...this.profiles.values()].map(p => structuredClone(p)); }
@@ -68,6 +74,7 @@ export class Connections {
     if (seat.kind !== 'api' || seat.provider === 'mock') return seat;
     const profile = seat.connectionId ? this.profiles.get(seat.connectionId) :
       this.profiles.get(({ qwen: 'alibaba', openai: 'openai', claude: 'anthropic' })[seat.provider]);
+    if (!profile && !seat.connectionId) return seat; // Inactive legacy seat uses the preserved fallback.
     if (!profile) throw new Error('所选 API 连接不存在');
     if (seat.connectionId && !profile.models.some(m => m.id === seat.model)) throw new Error('请先在该连接中添加这个模型');
     return { ...seat, provider: profile.provider, connectionId: profile.id };
@@ -80,7 +87,6 @@ export class Connections {
     const env = profile.provider === 'qwen' ? { QWEN_API_KEY: key, QWEN_BASE_URL: profile.baseUrl } :
       profile.provider === 'openai' ? { OPENAI_API_KEY: key, OPENAI_BASE_URL: profile.baseUrl } : { ANTHROPIC_API_KEY: key, ANTHROPIC_BASE_URL: profile.baseUrl };
     return { env, fetchImpl: this.fetchImpl, allowCustomModel: true,
-      referencePrice: isTokenPlanEndpoint(profile.baseUrl) && TOKEN_PLAN_MODELS.some(m => m.id === seat.model && m.input === model.input && m.output === model.output) ? undefined :
-        model.input !== null && model.output !== null ? { input: model.input, output: model.output } : null };
+      referencePrice: model.input !== null && model.output !== null ? { input: model.input, output: model.output } : null };
   }
 }

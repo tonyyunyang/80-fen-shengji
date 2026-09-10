@@ -1,5 +1,6 @@
+import { t, pick } from './i18n.js';
 export const TRICK_TIMING = Object.freeze({ hold: 850, flip: 300, collect: 450 });
-export const SUIT_NAMES = { S: '黑桃', H: '红桃', D: '方块', C: '梅花' };
+export const SUIT_NAMES = { S: t('黑桃'), H: t('红桃'), D: t('方块'), C: t('梅花') };
 
 export function tableScope(game) {
   return game ? game.id + ':' + (game.events.findLast(event => event.type === 'deal_started')?.seq ?? 0) + ':' + game.viewer : null;
@@ -32,16 +33,17 @@ export class TrickFlow {
 export function tableFacts(game) {
   const last = game.tricks.at(-1) || null;
   const settled = !!game.trump;
+  const dealerKnown = game.dealerKnown ?? game.dealer >= 0;
   const sameLevel = game.match.levels[0] === game.match.levels[1];
   // match.levels already advances at the final trick; trump.rank belongs to this deal.
-  const rank = game.trump?.rank ?? (game.declaration || game.match.dealer >= 0 ? game.trumpRank : sameLevel ? game.match.levels[0] : null);
+  const rank = game.trump?.rank ?? (game.declaration || dealerKnown ? game.trumpRank : sameLevel ? game.match.levels[0] : null);
   const suit = settled ? game.trump.suit : game.declaration?.suit;
   return {
     rank, suit, settled, last,
-    suitName: settled || game.declaration ? suit ? SUIT_NAMES[suit] + '主' : '无主' : '待亮主',
-    suitLabel: settled ? '主花色' : game.declaration ? '当前亮主' : '主花色待定',
+    suitName: settled || game.declaration ? suit ? SUIT_NAMES[suit] + pick('主', '') : t('无主') : t('待亮主'),
+    suitLabel: settled ? t('主花色') : game.declaration ? t('当前亮主') : t('主花色待定'),
     dealer: game.dealer >= 0 ? game.dealer : game.declaration?.seat ?? null,
-    dealerLabel: !settled && game.match.dealer < 0 ? '暂定庄家' : '庄家',
+    dealerLabel: !settled && !dealerKnown ? t('暂定庄家') : t('庄家'),
     liveTrick: game.score ? game.tricks.length : game.tricks.length + 1,
   };
 }

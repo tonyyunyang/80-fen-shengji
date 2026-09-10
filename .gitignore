@@ -14,3 +14,6 @@ coverage/
 *.log
 credentials*.json
 .public-release/
+
+# Machine-local coding-agent settings
+.codex/

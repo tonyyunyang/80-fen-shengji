@@ -12,6 +12,8 @@ Each physical card ID has one fixed printed suit and rank. Conservation checks v
 
 The browser uses [continuous dealing](continuous-dealing.md) for zero or one human. The card-rule profile stays the same; the chosen timing mode is recorded separately as `dealing`. Shared-device multi-human play retains ordered mode for handoff privacy.
 
+New browser matches use `firstDealer=random`: an independent seeded cut chooses the first dealer before dealing, so either partnership may attack first. Declarations choose trump without changing that dealer. Core reference fixtures and older checkpoints can explicitly retain `firstDealer=declaration`.
+
 A separate cut determines the first taker in a game without a known dealer. Otherwise the dealer takes first. Deal 100 cards in seat order. A seat can use only its already received cards. One level card declares that suit; a matching level pair is stronger; small-joker and big-joker pairs can declare no-trump. A stronger declaration can counter another seat. Self-countering is prohibited; the current declarer can reinforce its single into a same-suit level pair before a joker-pair counter.
 
 Continuous mode deals one card every 500ms by default (700ms is optional). Any player can submit a legal bid using received cards while dealing continues. API requests are private and concurrent, at most one per seat. A proposal must have been available in its original observation and remain legal on receipt. A later equal-strength bid is silently discarded; it is never upgraded or replaced automatically. After card 100, a shared five-second closing window opens. Actual accepted bids renew that full window; private thinking, passes and failures do not. No more cards are drawn during closing.
@@ -20,7 +22,7 @@ Ordered mode is retained for existing checkpoints, historical provider fixtures,
 
 No declaration means no-trump. A known dealer remains dealer after counters. Without a known dealer, the last declarer becomes dealer, or the first taker if nobody declared. Dealer receives the kitty and buries exactly eight cards, without point or trump restrictions.
 
-Optional low-point/low-trump redeals default off. When enabled, opposing-team seats with at most 15 points or at most three trumps can request a redeal. There are at most three redeals in a deal. The setup offers a simple redeal or a redeal with a fresh dealer contest. This follows the seat-independent eligibility of the reference referee.
+Optional low-point/low-trump redeals default off. When enabled, opposing-team seats with at most 15 points or at most three trumps can request a redeal. There are at most three redeals in a deal. The setup offers a simple redeal or a redeal with a fresh dealer contest. This follows the seat-independent eligibility of the reference referee. During a fresh dealer contest, each team bids its own level; the public `dealerKnown` flag distinguishes that contest from the previous match dealer.
 
 ## Card order and following
 

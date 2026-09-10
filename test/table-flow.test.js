@@ -59,3 +59,10 @@ test('the fixed info bar uses the current deal level, including after advancemen
   assert.equal(tableFacts(contested).rank, 5); assert.equal(tableFacts(contested).suitLabel, '当前亮主');
   assert.equal(tableFacts(contested).dealer, 0);
 });
+
+test('a redeal with a new dealer contest does not reuse the previous dealer level or label',()=>{
+  const game={tricks:[],trump:null,declaration:null,trumpRank:3,dealer:-1,dealerKnown:false,match:{dealer:0,levels:[3,5]}};
+  assert.equal(tableFacts(game).rank,null);
+  const bid=tableFacts({...game,declaration:{seat:1,suit:'H'},trumpRank:5});
+  assert.equal(bid.rank,5);assert.match(bid.dealerLabel,/暂定|provisional/i);
+});

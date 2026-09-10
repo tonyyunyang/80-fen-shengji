@@ -1,12 +1,33 @@
+import { analyzeEndgame } from './analysis-worker.js';
+import { buildExpertFacts, EXPERT_FACTS_PROMPT } from './expert-facts.js';
+import { expertPrompt } from './expert-prompt.js';
 import { createHash } from 'node:crypto';
 import { normalizeUsage, referenceCost } from './usage.js';
 import { safeAction } from './game.js';
 import { classify, pairCount, longestTractor, enumerateLegalFollows } from './rules.js';
 import { effectiveSuit } from './cards.js';
-import { assertTokenPlanModel, tokenPlanRequestOptions } from './model-catalog.js';
+import { assertTokenPlanModel, tokenPlanRequestOptions, kimiCodeRequestOptions } from './model-catalog.js';
 import { redact } from './redact.js';
+import { buildNotebook } from './notebook.js';
+import { buildDecisionContext } from './decision-context.js';
+import { buildStrategyContext } from './strategy-context.js';
+import { buildActionContext, constrainToolToObservation } from './action-context.js';
+import { buildAdvisorContext, ADVISOR_PROMPT } from './advisor-context.js';
+import { buildTeamContext, TEAM_PROMPT, TEAM_ADVISOR_PROMPT } from './team-context.js';
+import { buildEndgameEstimates } from './endgame-estimates.js';
+import { decisionFirstObservation, DECISION_FIRST_PROMPT } from './decision-brief.js';
 
 export const PROVIDERS = ['mock', 'openai', 'claude', 'qwen'];
+const contextVersions = new Map(Object.entries({
+  baseline: 2, notebook: 3, tactical: 4, strategic: 5, 'strategic-v2': 6, coached: 7,
+  partnership: 8, search: 9, 'partnership-advised': 10, 'decision-first': 11,
+  'decision-first-advised': 12, 'partnership-plan': 13, 'partnership-plan-search': 14, 'expert-zh': 15, 'expert-en': 15, 'expert-facts-zh': 16, 'expert-facts-en': 16, 'expert-search-zh': 17, 'expert-search-en': 17, 'expert-search-wide-zh': 18,
+}));
+export const CONTEXT_PROFILES = Object.freeze([...contextVersions.keys()]);
+export const contextVersion = (profile = 'partnership') => contextVersions.get(profile) ?? 3;
+const teamProfiles = ['expert-search-wide-zh','expert-search-zh','expert-search-en','expert-zh','expert-en','expert-facts-zh','expert-facts-en','partnership','search','partnership-advised','decision-first','decision-first-advised','partnership-plan','partnership-plan-search'];
+const briefProfiles = ['decision-first','decision-first-advised'];
+const actionProfiles = ['strategic-v2','coached',...teamProfiles];
 export function followMoves(view) {
   return view.phase === 'follow' ? enumerateLegalFollows(view.hand, classify(view.plays[0].cards, view.trump), view.trump, view.rules) : null;
 }
@@ -18,10 +39,10 @@ export function toolFor(phase, moves = null) {
   const bury = phase === 'bury';
   return { name: bury ? 'bury_cards' : 'play_cards', description: bury ? 'Bury exactly eight unique card IDs from your hand.' : 'Play unique card IDs from your hand, satisfying the supplied following obligations.', parameters: object({ card_ids: { type: 'array', items: { type: 'integer' }, minItems: bury ? 8 : 1, maxItems: bury ? 8 : 25 } }) };
 }
-export function compactObservation(view, moves = followMoves(view)) {
+export function compactObservation(view, moves = followMoves(view), contextProfile = 'partnership', endgameOverride) {
   const cards = (hand) => hand.map((card) => [card.id, card.suit, card.rank]);
   const result = {
-    v: 2, phase: view.phase, seat: view.seat, team: view.myTeam,
+    v: contextVersion(contextProfile), phase: view.phase, seat: view.seat, team: view.myTeam,
     levels: view.levels, passedLevels: view.played, gates: view.gates,
     dealer: view.declSeat, previousDealer: view.dealer, dealerKnown: view.dealerKnown,
     firstTaker: view.firstTaker, trump: view.trump, level: view.trumpRank,
@@ -42,6 +63,18 @@ export function compactObservation(view, moves = followMoves(view)) {
     };
   }
   if (moves?.length) result.legalMoves = moves.map((ids, id) => ({ id, card_ids: ids }));
+  if (contextProfile !== 'baseline') result.notebook = buildNotebook(view);
+  if (['tactical',...teamProfiles].includes(contextProfile)) result.decisionContext = buildDecisionContext(view, moves, result.notebook);
+  if (['strategic','strategic-v2','coached'].includes(contextProfile)) result.decisionContext = buildStrategyContext(view, moves, result.notebook);
+  if (actionProfiles.includes(contextProfile)) result.actionContext = buildActionContext(view, moves, toolFor(view.phase, moves));
+  if (teamProfiles.includes(contextProfile)) {
+    result.partnership = buildTeamContext(view, result.notebook, result.decisionContext);
+    if (['search','partnership-plan-search'].includes(contextProfile)) result.endgameEstimates = buildEndgameEstimates(view, moves);
+  }
+  if (contextProfile.startsWith('expert-facts-') || contextProfile.startsWith('expert-search-')) result.expertFacts = buildExpertFacts(view, moves, result);
+  if (contextProfile.startsWith('expert-search-')) result.endgameEstimates = endgameOverride === undefined ? buildEndgameEstimates(view, moves, {maxHand:12,samples:contextProfile==='expert-search-wide-zh'?32:8}) : endgameOverride;
+  if (['coached','partnership-advised','decision-first-advised','partnership-plan','partnership-plan-search'].includes(contextProfile)) result.referenceAdvice = buildAdvisorContext(view, moves, toolFor(view.phase, moves));
+  if (briefProfiles.includes(contextProfile)) return decisionFirstObservation(view, result, moves);
   return result;
 }
 export const SYSTEM_PROMPT = [
@@ -54,10 +87,45 @@ export const SYSTEM_PROMPT = [
   'Follow exact card count, as many led-suit cards as possible, required pairs and tractor pairs. The supplied mustFollow obligations are authoritative. A trump play can win only if its structure matches the lead. Equal plays lose to the earlier play. In a throw, all components must match to contend.',
   'Throws are resolved by the engine: if any other seat can beat a component in the same suit, you must play the lowest-top component instead, without a point penalty. You are not told hidden hands in advance.',
   '5 is worth 5 points; 10 and K are 10 each. The dealer team tries to keep attackers below 80. Attackers take the kitty only if they win the final trick; kitty multiplier is twice the last lead card count. Dealer wins advance 3 levels at 0, 2 below 40, otherwise 1. Attackers take over at 80 and advance floor((total-80)/40). Mandatory levels must be successfully defended.',
-  'During dealing only choose one listed declaration ID or pass. You may reconsider after future draws. A dealer-known game keeps its dealer despite counterdeclarations; in the first/no-dealer game the final declarer becomes dealer. No declaration means no-trump, with first taker as dealer when none was set.',
+  'During dealing only choose one listed declaration ID or pass. You may reconsider after future draws. A dealer-known game keeps its dealer despite counterdeclarations; in a dealer-unknown game the final declarer becomes dealer. No declaration means no-trump, with first taker as dealer when none was set.',
   'Bury eight cards without suit/point restrictions. Aim to maximize your team result across the deal and match. No shell, browsing, or other tools exist.',
   'If speedRun is true, levels use 2,5,10,K,A with at most one ladder step per positive level gain, and mandatory gates do not apply. A zero-level takeover still does not advance.',
   'If offered a redeal, fullRebel=redeal restarts the deal without changing a known dealer; fullRebel=scramble reopens the dealer contest. Eligibility and the maximum number of redeals are enforced by the engine.',
+].join('\n');
+
+export const DECISION_CONTEXT_PROMPT = [
+  'decisionContext summarizes your hand shape and annotates EVERY move in legalMoves without pruning or ranking the menu. Its move IDs refer to that same complete menu.',
+  'Use pointsSpent, trumpsSpent, pairsBroken and remaining structures to compare resource use. winnerSoFar and teamWinningSoFar only compare public cards already played, not unknown future plays. overtakesPartner is a factual warning to consider, not a ban.',
+  'higherUnlocatedCopies and tiedUnlocatedCopies include possible cards in the unknown kitty. Zero higher cards does not prevent ruffing, and equal ranks do not beat an earlier equal play. A proven void does not prove the player owns a trump.',
+  'On a final trick, weigh the kitty multiplier and the team objective. Unknown kitty points remain unknown. These facts supplement the legal rules; choose the action yourself.',
+].join('\n');
+export const STRATEGY_PROMPT = [
+  'The notebook is a deterministic aid, derived only from this observation. unlocatedFaces are [suit,rank,copies] that may be in other hands OR the unknown kitty. topUnplayed includes your hand; topOutsideHand excludes it. Equal top faces can tie. No opponent ownership or win probability is asserted.',
+  'provenVoids mean a seat exhausted that effective suit after a public follow. Unknown suits are not proved present or absent. currentTrick.winningSeat wins so far, not necessarily after remaining seats act.',
+  'Before choosing: identify your team goal, who wins now, who is still to play, exposed points, and known voids. Compare the candidate with conserving your trump control, pairs, tractors and entries to partner. Feed points to a winning partner when justified; do not automatically overtake them. Be cautious about opponents who can ruff, and about throwing components that can be beaten. Plan the last trick and kitty exposure.',
+  'For burial, compare suit shortening, keeping winning pairs/tractors and trump control, and the points at risk if the last trick is lost. For bidding, compare length, strength and pairs in the proposed trump suit, partner declaration and dealer role, using only the received hand.',
+  'Keep deliberation brief and return only the action tool. The entire decision, including any repair, has a shared deadline of at most 12 seconds. Do not request more information or wait for future cards.',
+].join('\n');
+
+export const TEAM_PLAN_PROMPT = [
+  'referenceAdvice is a competent starting plan made with the same permitted observation, not an optimal oracle. Your sole goal is improving the partnership result; copying it earns no reward.',
+  'Compare its concrete team plan with the best alternative. Change the candidate when there is a specific team benefit: securing or preventing the 80-point threshold, cashing safe points, keeping a needed entry, improving useful suit/tractor structure, or preserving final-trick control. Do not change it merely to save a small immediate point card, win personally over partner, or act differently.',
+  'A possible unseen card is not proof that a different move is safer. When the proposed alternative has no concrete advantage and mainly depends on guessed ownership, keep the established plan. All legal alternatives remain available and the final action is yours.',
+  'Compare promptly and return only the action tool. Do not narrate the comparison.',
+].join('\n');
+
+export const STRATEGIC_PROMPT = [
+  'Read decisionContext.brief first, then compare the full state. The brief and comparisonSets mechanically identify tied options by visible statistics; they do not restrict the complete legal menu. The readable cards labels help you join move IDs to printed cards.',
+  'Decision priorities for partnership 80fen: optimize the TEAM result, not simply the smallest immediate pointsSpent. Choose the move yourself from the complete legal menu.',
+  'First read scoreRace, the current winner, who acts after you, and each move.teamOutcome. secured/lost are deductions about the winning TEAM, not guessed opponent hands. unsettled is not safe to treat as a won trick.',
+  'If all legal moves lose this trick, start with comparisonSets.leastHighTrumpsSpent and protect future control. Do not throw a joker or level card merely to avoid conceding a modest point card when both plays lose. Prefer the move retaining that control unless the immediate score threshold or a concrete endgame reason is more important. Compare highTrumpsSpent, trumpOrdersSpent and pairsBroken explicitly.',
+  'If the trick is secured for your team, bank disposable point cards now when they win equally well and have comparable structural/control cost. A low 5 may be better to cash than saving it for a later lost trick. Use the least expensive winning control; do not automatically overtake a partner.',
+  'If the outcome is unsettled, consider the remaining opponents before feeding points. Distinguish overtaking the present winner from surviving later replies. Proven voids allow ruffing only as a possibility unless a trump is publicly known.',
+  'When discarding off-suit, compare remainingSuitCounts with handShape and suitControl. Usually shed weak short-suit baggage before dismantling a long suit with winners or useful sequences. Preserve pairs and tractors when that does not sacrifice a more important team objective.',
+  'On lead, plan how the partnership will cash side-suit winners and regain the lead. Cash sound pairs/tractors when useful; drawing trump is valuable when it protects such winners, but spending the last control merely to win a low-value trick can lose the ending. Do not assume a throw succeeds against unknown hands.',
+  'For burial, balance shortening weak side suits, retained control/structures and the multiplied kitty exposure. For the last few tricks, compare points needed for takeover/next threshold with preserving a final-trick entry; do not hoard control after its useful purpose has passed.',
+  'Publicly shown declaration cards are facts. dealer-hand-or-kitty explicitly means their current location is unknown after burial. All other unknown cards remain unknown. Never infer exact ownership from unlocated counts.',
+  'Make this comparison briefly and return exactly one tool call. No narrative, extra tools, or request for hidden information.',
 ].join('\n');
 
 export function parseToolCall(name, args, phase, moves = null) {
@@ -76,15 +144,28 @@ export function parseToolCall(name, args, phase, moves = null) {
 export function providerStatus(env = process.env) {
   return { mock: true, openai: !!env.OPENAI_API_KEY, claude: !!env.ANTHROPIC_API_KEY, qwen: !!env.QWEN_API_KEY && !!env.QWEN_BASE_URL };
 }
-export function buildRequest(view, seat, { env = process.env, maxOutput = 512, feedback = '', thinking = false, allowCustomModel = false } = {}) {
+export function buildRequest(view, seat, { env = process.env, maxOutput = 512, feedback = '', thinking = false, thinkingBudget, reasoningEffort, allowCustomModel = false, contextProfile = 'partnership', endgameAnalysis } = {}) {
+  if (thinkingBudget !== undefined && (!Number.isInteger(thinkingBudget) || thinkingBudget < 0 || thinkingBudget > maxOutput - 128 || !/^qwen3\.8-/.test(seat.model))) throw new Error('Thinking budget requires a supported Qwen model and space for the final action');
+  if (reasoningEffort !== undefined && (seat.provider !== 'qwen' || !['none','low','high','max'].includes(reasoningEffort) || thinkingBudget !== undefined)) throw new Error('Reasoning effort requires Chat Completions and cannot be combined with a thinking budget');
   const moves = followMoves(view);
-  const tool = toolFor(view.phase, moves);
-  const input = JSON.stringify(compactObservation(view, moves)) + (feedback ? '\nPrevious action rejected: ' + feedback : '');
-  const prompt = SYSTEM_PROMPT + '\nActive rule settings: ' + JSON.stringify(view.rules);
+  const originalTool = toolFor(view.phase, moves);
+  const actionContract = actionProfiles.includes(contextProfile);
+  const tool = actionContract ? constrainToolToObservation(originalTool, view, moves) : originalTool;
+  const compact = compactObservation(view, moves, contextProfile, endgameAnalysis?.value);
+  const input = JSON.stringify(compact) + (feedback ? '\nPrevious action rejected: ' + feedback : '');
+  const strategic = ['strategic','strategic-v2','coached'].includes(contextProfile);
+  const phasePolicy = actionContract && tool.name !== 'play_move' ?
+    STRATEGIC_PROMPT.split('\n').filter(line => !/comparisonSets|complete legal menu|each move\.teamOutcome|all legal moves lose|brief first/.test(line)).join('\n') : STRATEGIC_PROMPT;
+  const activeContract = compact.actionContext ? '\nCURRENT ACTION CONTRACT (use this exact tool and argument field): ' + compact.actionContext.instruction + (view.phase === 'lead' ? ' Select all lead cards from exactly ONE actionContext.handGroups effectiveSuit. A printed-suit match is insufficient when a level card belongs to T.' : '') : '';
+  const decisionPolicy = actionContract && !moves?.length ? DECISION_CONTEXT_PROMPT.split('\n').slice(2).join('\n') : DECISION_CONTEXT_PROMPT;
+  const advicePrompt = ['partnership-plan','partnership-plan-search'].includes(contextProfile) ? TEAM_PLAN_PROMPT : compact.partnership ? TEAM_ADVISOR_PROMPT : ADVISOR_PROMPT;
+  const standardPrompt = SYSTEM_PROMPT + (briefProfiles.includes(contextProfile) ? '\n' + DECISION_FIRST_PROMPT : (contextProfile === 'baseline' ? '' : '\n' + STRATEGY_PROMPT) + (compact.partnership ? '\n' + TEAM_PROMPT : '') + (compact.decisionContext ? '\n' + decisionPolicy : '') + (strategic ? '\n' + phasePolicy : '') + (compact.referenceAdvice ? '\n' + advicePrompt : '')) + '\nActive rule settings: ' + JSON.stringify(view.rules) + activeContract;
+  const prompt = contextProfile.startsWith('expert-') ? expertPrompt(contextProfile.split('-').at(-1)) + ((contextProfile.startsWith('expert-facts-') || contextProfile.startsWith('expert-search-')) ? '\n' + EXPERT_FACTS_PROMPT[contextProfile.split('-').at(-1)] : '') + (contextProfile.startsWith('expert-search-') ? (contextProfile.endsWith('-zh') ? '\n残局估计endgameEstimates比较同一组符合公开牌史的可能分牌，绝不是真实隐藏手牌，也不是校准胜率。每个假设后续由只看自身假设手牌的快速本地策略完成。sampledTeamWins为模拟中本方赢局次数，不是复制该策略动作的分数。优先比较各选择的团队胜负及攻方总分，再用当前明确事实审查；你仍可选择任何合法动作。' : '\nendgameEstimates compares the same hypothetical allocations consistent with public play, never real hidden hands or calibrated win probabilities. Each simulated continuation uses a fast local policy seeing only its own hypothetical observation. sampledTeamWins counts partnership deal wins, not agreement with that policy. Compare team outcomes and attacker totals, then check public tactical facts; all legal actions remain available.') : '') + '\nActive rule settings: ' + JSON.stringify(view.rules) + activeContract : standardPrompt;
   if (!seat.model?.trim()) throw new Error('请为 API 座位填写模型 ID');
   if (!providerStatus(env)[seat.provider]) throw new Error('该提供商的服务端 API 配置尚未完成');
   if (seat.provider === 'openai') return {
     legalMoves: moves,
+    referenceAdvice: compact.referenceAdvice,
     url: (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '') + '/responses',
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.OPENAI_API_KEY },
     body: { model: seat.model, store: false, instructions: prompt, input, max_output_tokens: maxOutput,
@@ -93,7 +174,8 @@ export function buildRequest(view, seat, { env = process.env, maxOutput = 512, f
   };
   if (seat.provider === 'claude') return {
     legalMoves: moves,
-    url: (env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/$/, '') + '/v1/messages',
+    referenceAdvice: compact.referenceAdvice,
+    url: (env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '') + (/\/v1\/*$/.test(env.ANTHROPIC_BASE_URL || '') ? '/messages' : '/v1/messages'),
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
     body: { model: seat.model, system: prompt, max_tokens: maxOutput, messages: [{ role: 'user', content: input }],
       tools: [{ name: tool.name, description: tool.description, input_schema: tool.parameters }],
@@ -101,16 +183,26 @@ export function buildRequest(view, seat, { env = process.env, maxOutput = 512, f
   };
   if (seat.provider === 'qwen') {
     if (!allowCustomModel) assertTokenPlanModel(seat.model, env.QWEN_BASE_URL);
-    const modelOptions = tokenPlanRequestOptions(seat.model, maxOutput, tool.name, thinking) ||
+    const modelOptions = kimiCodeRequestOptions(seat.model, env.QWEN_BASE_URL, maxOutput, thinking, tool.name) || tokenPlanRequestOptions(seat.model, maxOutput, tool.name, thinking) ||
       (/^qwen3\.8-/.test(seat.model) ? { max_completion_tokens: maxOutput, enable_thinking: thinking, preserve_thinking: false, parallel_tool_calls: false,
         tool_choice: thinking ? 'auto' : { type: 'function', function: { name: tool.name } } } : { max_tokens: maxOutput, tool_choice: 'auto' });
+    const jsonAction = !!kimiCodeRequestOptions(seat.model, env.QWEN_BASE_URL, maxOutput) && !thinking && (reasoningEffort === undefined || reasoningEffort === 'none');
+    const body = { model: seat.model, ...modelOptions, ...(thinking && thinkingBudget !== undefined ? { thinking_budget: thinkingBudget } : {}), ...(reasoningEffort !== undefined ? { reasoning_effort: reasoningEffort } : {}),
+      messages: [{ role: 'system', content: prompt }, { role: 'user', content: input }], tools: [{ type: 'function', function: tool }] };
+    if (jsonAction) {
+      delete body.tools; delete body.tool_choice; delete body.parallel_tool_calls;
+      body.response_format = { type: 'json_object' };
+      body.messages[0].content += '\n' + (contextProfile.endsWith('-zh') ?
+        '传输约定：本次接口使用JSON动作，没有可调用的工具。只输出工具参数本身的JSON对象，禁止函数语法、Markdown、解释或额外包装字段。严格按此schema：' :
+        'Transport contract: this request uses a JSON action, with no callable tools. Return only the argument object matching this schema, with no function syntax, Markdown, explanation or wrapper fields: ') + JSON.stringify(tool.parameters);
+    }
     return {
       legalMoves: moves,
+      referenceAdvice: compact.referenceAdvice,
+      actionFormat: jsonAction ? 'json_action' : 'native_tools',
       url: env.QWEN_BASE_URL.replace(/\/$/, '') + '/chat/completions',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.QWEN_API_KEY },
-      body: { model: seat.model, ...modelOptions,
-        messages: [{ role: 'system', content: prompt }, { role: 'user', content: input }],
-        tools: [{ type: 'function', function: tool }] },
+      body,
     };
   }
   throw new Error('不支持的提供商');
@@ -125,14 +217,18 @@ export async function requestAction(view, seat, options = {}) {
     const args = moves?.length ? { move_id: match } : action.type === 'declare' ? { choice: action.choice } : action.type === 'rebel' ? { accept: action.accept } : { card_ids: action.cardIds };
     return { action: parseToolCall(tool.name, args, view.phase, moves), usage: { input: 0, output: 0, cached: 0, cacheWrite: 0 }, ms: performance.now() - started, simulated: true };
   }
+  if (options.contextProfile?.startsWith('expert-search-')) options = {...options,endgameAnalysis:await analyzeEndgame(view,followMoves(view),options.signal,options.contextProfile==='expert-search-wide-zh'?{samples:32,maxMs:2500}:undefined)};
   const request = buildRequest(view, seat, options);
   const secrets = Object.entries(options.env || process.env).filter(([key]) => key.endsWith('API_KEY')).map(([, value]) => value);
   const body = JSON.stringify(request.body);
   const metadata = {
-    provider: seat.provider, model: seat.model, phase: view.phase, contextVersion: 2,
+    provider: seat.provider, model: seat.model, phase: view.phase, actionFormat: request.actionFormat || 'native_tools', analysisStatus: options.endgameAnalysis?.status ?? null, analysisMs: options.endgameAnalysis?.ms ?? null, contextVersion: contextVersion(options.contextProfile),
+    promptLanguage: options.contextProfile?.startsWith('expert-') ? options.contextProfile.split('-').at(-1) : 'en',
     legalMoveCount: request.legalMoves?.length ?? null,
     requestBytes: Buffer.byteLength(body), requestHash: createHash('sha256').update(body).digest('hex'),
-    outputLimit: options.maxOutput || 512, thinking: request.body.enable_thinking ?? null,
+    outputLimit: options.maxOutput || 512, thinking: request.body.enable_thinking ?? null, thinkingBudget: request.body.thinking_budget ?? null, reasoningEffort: request.body.reasoning_effort ?? null,
+    requiredCardCount: view.phase === 'follow' ? view.plays[0].cards.length : view.phase === 'bury' ? 8 : null,
+    advisorPolicy: request.referenceAdvice?.policy || null,
     responseId: null, requestId: null, httpStatus: null, finishReason: null,
     usage: normalizeUsage(seat.provider, null), usageKnown: false, referenceCost: null,
     headersMs: null, ms: null,
@@ -171,10 +267,30 @@ export async function requestAction(view, seat, options = {}) {
       calls = (data.content || []).filter((item) => item.type === 'tool_use').map((item) => ({ name: item.name, args: item.input }));
     } else {
       if (data.choices?.[0]?.finish_reason === 'length') throw new Error('模型输出达到上限，动作未完成');
-      calls = (data.choices?.[0]?.message?.tool_calls || []).map((item) => ({ name: item.function.name, args: JSON.parse(item.function.arguments) }));
+      const message = data.choices?.[0]?.message;
+      if (request.actionFormat === 'json_action') {
+        metadata.toolCallCount = message?.tool_calls?.length || 0;
+        if (metadata.toolCallCount) throw new Error('JSON动作接口不能同时返回工具调用');
+        if (typeof message?.content !== 'string') throw new Error('模型未返回JSON动作');
+        // Parse the whole response. Never extract JSON out of prose or execute
+        // function-looking text; the normal action parser and engine still validate it.
+        calls = [{ name: toolFor(view.phase, request.legalMoves).name, args: JSON.parse(message.content) }];
+      } else calls = (message?.tool_calls || []).map((item) => ({ name: item.function.name, args: JSON.parse(item.function.arguments) }));
     }
+    metadata.toolCallCount ??= calls.length;
+    metadata.actionCount = calls.length;
+    metadata.actionNameMatches = calls.length === 1 && calls[0].name === toolFor(view.phase, request.legalMoves).name;
+    metadata.toolNameMatches = request.actionFormat === 'json_action' ? null : metadata.actionNameMatches;
+    metadata.argumentFields = calls.length === 1 && calls[0].args && typeof calls[0].args === 'object' ? [...new Set(Object.keys(calls[0].args).map(key => ['card_ids','move_id','choice','accept'].includes(key) ? key : 'unexpected'))] : [];
+    metadata.returnedCardCount = calls.length === 1 && Array.isArray(calls[0].args?.card_ids) ? calls[0].args.card_ids.length : null;
+    metadata.argumentValueTypes = calls.length === 1 ? Object.fromEntries(Object.entries(calls[0].args || {}).filter(([key])=>['card_ids','move_id','choice','accept'].includes(key)).map(([key,value])=>[key,Array.isArray(value)?[...new Set(value.map(item=>typeof item))]:typeof value])) : null;
     if (calls.length !== 1) throw new Error('模型必须返回恰好一个工具调用');
     const action = parseToolCall(calls[0].name, calls[0].args, view.phase, request.legalMoves);
+    if (request.referenceAdvice) {
+      const expected = request.referenceAdvice.tool.arguments;
+      metadata.referenceAdviceFollowed = expected.move_id !== undefined ? calls[0].args.move_id === expected.move_id :
+        action.cardIds.length === expected.card_ids.length && action.cardIds.every(id => expected.card_ids.includes(id));
+    }
     metadata.ms = performance.now() - started;
     return { action, usage: metadata.usage, ms: metadata.ms, simulated: false, usageKnown: metadata.usageKnown, metering: redact(metadata, secrets) };
   } catch (cause) {

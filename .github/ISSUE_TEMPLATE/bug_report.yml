@@ -1,0 +1,29 @@
+name: Bug report / 问题反馈
+description: Something at the table is not working as expected.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for helping. 中文或 English 都可以。Please use synthetic card examples and never include keys or cookies. Security issues belong in the private reporting flow."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened? / 出了什么问题？
+      description: Include what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps or card example / 复现步骤或牌例
+      description: For a rules issue, include level/trump, the lead, permitted visible hand and expected result.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, OS and version / 浏览器、系统与版本
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or additional context / 截图或补充信息

@@ -194,3 +194,19 @@ test('decision provenance is retained while burying details remain private', () 
   assert.equal(publicView(s, (dealer + 1) % 4).events.some((event) => event.decisionId === audit.decisionId), false);
   assert.equal(publicView(s, dealer).events.some((event) => event.decisionId === audit.decisionId), true);
 });
+
+test('random initial dealer is reproducible, covers both teams, and declarations cannot change it', () => {
+  const counts=[0,0,0,0];
+  for(let seed=1;seed<=64;seed++){
+    const initial=createGame({seed,seats,rules:{firstDealer:'random'}}),dealer=initial.dealer;
+    counts[dealer]++;assert.equal(initial.dealerKnown,true);
+    assert.equal(createGame({seed,seats,rules:{firstDealer:'random'}}).dealer,dealer);
+    let state=initial;
+    while(state.pending?.phase==='declare'){
+      const choice=state.pending.options[0]?.id||'pass';
+      state=applyAction(state,envelope(state,{type:'declare',choice}));
+    }
+    assert.equal(state.dealer,dealer);assert.equal(state.phase,'bury');assertConservation(state);
+  }
+  assert.ok(counts.every(count=>count>0));
+});

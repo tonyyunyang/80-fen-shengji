@@ -1,0 +1,15 @@
+name: Idea / 改进建议
+description: Suggest a better game, interface, explanation or contribution.
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea / 你的想法
+      description: What would it help a player or contributor do?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example or design / 例子或设计
+      description: A small concrete example is welcome.

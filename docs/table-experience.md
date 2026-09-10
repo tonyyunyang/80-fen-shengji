@@ -1,78 +1,63 @@
-# Table experience
+# Pixel table experience
 
-Implemented table behavior. The table supports local play and independent browser sessions.
+The approved pixel table is the single production interface. `public/index.html` opens the game menu; the table is connected to the real engine, not scripted hands. The original art direction is retained: green felt, a curved rail, paper cards, pixel people and the generated court/joker/back atlas.
 
-## Visual approach
+## Navigation
 
-A green felt surface, warm beveled rails, restrained lighting, and paper card faces make the table the primary surface. An in-table “入座开局” button starts with the current setup, including on narrow screens. Setup collapses when a game starts. Per-seat model choices and price references stay available in the seat settings.
+A fresh tab opens the main menu with New game, Rules, Settings and Credits, plus a language icon and Chinese/English picker (Chinese by default). An existing game adds Continue. Reloading an active game in the same tab reconnects to that game. Returning to the main menu pauses the current game, which can be continued later.
 
-Three.js **0.185.1**, pinned in the lockfile, renders only the decorative table. It is served locally; no CDN, remote font, or image request is needed. The renderer imports lazily, caps pixel ratio at 1.5, and draws for initialization, resize, appearance changes and brief pointer movement. There is no idle render loop, following the [Three.js on-demand rendering pattern](https://threejs.org/manual/en/rendering-on-demand.html). Hidden pages stop rendering; reduced motion disables parallax. Coarse pointers have no parallax.
+The Chinese and English menu titles are original drawn SVG letterforms, with stepped contours, paper faces, gold depth and crimson inlays. They do not depend on an installed display font; accessible text remains in the heading.
 
-If WebGL2, the module import, or context creation fails, the CSS table remains playable. Context loss also falls back to CSS. A local appearance switch turns off the 3D layer without changing the game.
+Dialogs keep their heading and close button visible while the content scrolls. Escape, the close button and a primary click on the dark backdrop dismiss them. A gesture that starts inside the dialog, such as selecting text and dragging out, does not dismiss it. Dismissing Pause resumes the table; dismissing Rules opened from Pause returns to Pause. Password fields clear on dismissal, and the page behind a modal cannot scroll.
 
-Cards, score, thinking indicators, buttons and dialogs remain HTML. The renderer receives no game state and cannot select cards, make provider calls, or affect timing. This keeps game logic independent of the visual library. Three.js is MIT licensed; its unchanged license is available at `/vendor/three/0.185.1/LICENSE` and in the installed package. The preserved 陪练 attribution remains separate.
+Each API seat has an inline Add or Manage connection button, including a clear explanation when no connection exists. The connection dialog identifies that seat. Saving links the connection to the originating seat; closing returns keyboard focus to its model picker. An unavailable previous model is cleared instead of silently substituting another model. The shared API connections button remains available in the right panel.
 
-## Reading the deal and collecting a trick
+New game opens a separate seat and table setup, initialized from the saved draft. General Settings offers hand size, table-card size, text size, suit palette, motion, texture, hints, direct single-card drag and optional synthesized sound/volume. Starting another game while one exists requires confirmation and resets levels to 2; it uses the draft seat/rule settings. Next deal preserves the current table's seats, rules and match progression. Settings do not silently alter that existing table.
 
-The play surface separates deal identity from physical card movement. The table center now belongs to cards. A face-down deck is visible during dealing, with a count that includes the eight reserved bottom cards. The final bidding countdown sits beside that deck. During burial, an empty card outline marks the waiting space; after burial, the eight covered bottom cards sit at the table edge.
+Seats, provider connections, model choices, prompt language, optional endgame analysis, rule options, request/output/deadline limits, suit colors and card motion are configured outside the game. In-game controls are Menu/Pause, Notebook, Learn, card selection and confirmation. Pause offers Resume, Rules, Autoplay and Main menu. Changing credentials retains the existing server-side pause/cancellation behavior.
 
-A sticky information bar explicitly shows **本局打几**, the named trump suit or **无主**, and the dealer and human's role. It labels a provisional declaration as **当前亮主**. Before different team levels are resolved, the level is **待定**. After scoring, it still shows the level actually played in this deal, using `trump.rank`, even though the match levels have already advanced.
+## One hand row
 
-Each public play has a seat, lead/follow label and card count. Completing a trick preserves all four plays for **850ms**, flips them face down over **300ms**, then gathers and moves the backs toward the winner over **450ms**. A covered pile and **上一墩收牌** remain beside that seat. The summary below the table also names the winner and the trick's points, including zero points.
+Dealing gives each player 25 cards. The dealer temporarily has 33 after taking the kitty, then confirms eight cards to return to 25. Neither the game nor its settings has a 25/33 scene switch or a two-row option.
 
-The display clock is separate from the engine. API decisions and dealing retain their existing deadlines and never wait for this animation. New public plays arriving during collection are shown when it finishes. A human may preselect the next play, with submission enabled after collection. Fast spectator updates coalesce to the latest completed trick, keeping at most one animation instead of building a queue.
+`hand-layout.js` computes one row in logical scene coordinates from the actual hand count. There is no layout class that changes the width used by the next layout calculation. The camera fits the entire scene into the viewport, including the minimum width needed for 33 large cards. Neither the page nor the hand needs scrolling during play. Hover supplies the close view. A repeated 25→33→25 sequence cannot inherit a second row.
 
-Pause, hidden tabs and reduced motion settle directly to the covered pile. Reload shows the current state without replaying old collections. Game/deal/viewer changes reset presentation identity; scoring alone does not. All motion uses existing public trick records. No new game event, API request, private hand, eligibility signal or usage counter is needed.
+Resting slots are independent of moving card faces. Hover opens a full-card reading gap and picks against its stable target geometry; ownership does not follow animated DOM rectangles. The hover controller caches geometry and uses a continuous, time-based lift across neighboring cards. It stops JavaScript frames when settled. Selection retains physical identities. Live style attributes and immutable face subtrees survive public state updates, avoiding a reset of the hover pose.
 
-Click a played group or **回看** to inspect the complete trick. Large fans show an exact total and a **＋N** badge for cards folded out of the compact view. The dialog shows all cards; an unfinished trick is explicitly a snapshot at opening time. Cards use corner-aligned ranks with enough exposed width for two-character labels such as 10.
+A pointer drag freezes the hand's hover poses and carries exactly one cloned card face. Other selected cards do not join it. A legal single-card drop submits exactly that card through the validated endpoint. A wrong-suit drop or a single in a multi-card follow slides back and changes neither game state nor selection. Click selects and lifts in hand; there is no duplicate preview on the table. Play confirms a selected group. Burial uses eight progress marks and the selected point total, then confirms all eight cards. Disabling direct drag makes drops select instead. Escape, lost capture, blur and pointer cancellation return the ghost without submitting.
 
-Responsibilities stay separate: `table-flow.js` owns the small presentation clock and deal facts, `table-view.js` renders public table information, and `table-flow.css` owns the layout and motion. The authoritative engine and provider adapters are unchanged by this pass.
+Click toggles a card, double-click selects its matching pair, Shift-click/Shift-arrow select ranges, arrows/Home/End move focus, Space selects and Enter confirms a valid play. Escape cancels a drag or selection before opening the pause menu. Validation explains illegal suit/count/structure choices; the server remains authoritative for all actions and throw adjudication.
 
-## Human controls
+## The actual table
 
-- A click toggles one physical card. Double-clicking selects both held copies of that face. Shift-click adds a contiguous range.
-- The hand uses one tab stop. Left/right, Home and End move between cards; Space toggles; Shift plus an arrow extends a range. Enter submits a valid selection; Escape clears it.
-- The hand and canvas keep their DOM identity across public updates. Selection, focus and horizontal scrolling survive unrelated changes. A new decision clears the old selection.
-- Selected-card chips show the complete proposed play even when some selected cards are off-screen.
-- Burial requires exactly eight cards. Follow selection checks suit, pairs and tractor obligations using the engine's public rule helpers. A lead must belong to one effective suit. These checks use only the player's hand and public cards; throw success remains the authoritative engine's decision.
-- “帮我选牌” is a local legal-selection convenience, not an API recommendation or a claim of strategic quality. It costs no tokens.
-- Submission binds the current decision or bidding context immediately and permits only one in-flight action. The server still rejects stale or duplicate actions.
-- “上一墩” displays the most recent completed public trick, winner and points. It remains available after the table animation clears the cards.
+Your hand is at the bottom; your partner is opposite and opponents are at the sides. The view rotates for shared-device human handoffs. Opponent hands remain backs plus public counts. A gold dealer token follows the actual dealer, including a token beside your hand when you deal.
 
-## Connection and presence
+Turn instructions, selection feedback, declaration buttons and the closing countdown occupy the control row below the hand. The central felt holds cards and the dealing stack. The kitty marker belongs to the trump information, away from the previous-trick buttons. The opposite seat uses a compact horizontal arrangement on desktop, and public hand counts sit beside the decorative backs.
 
-The header shows connection status; disconnected controls cannot submit. SSE reconnects automatically and supplies a fresh seat observation. Reload preserves the server's active table.
+`table-layout.js` measures the hand's entire hover area, card size, captions, seat panels and score/trump information. It allocates separate spaces for played cards and controls, including four visible multi-card plays. Fans tighten their spacing when needed while keeping individual card faces at the selected size. Side portraits stay below the score/trump panels. A measured logical scene is uniformly scaled to the available width and height; short windows do not crop the footer or require page scrolling. The desktop arrangement remains intact at narrow widths, where the whole scene is smaller. Preferences recompute the fit without retaining the previous size. Spectators retain a visible status/countdown beside the bottom seat.
 
-For a table with exactly one human, once a browser has shown that human's seat, all of that seat's windows being hidden/disconnected starts a five-second grace period. Another visible window or a quick reconnect cancels the pause. Public draws do not reset the grace period. If the grace expires, the server pauses, cancels current API decisions and preserves the remaining deal/closing clock. Returning does not resume automatically.
+Accepted declaration cards stay in their owners' table positions until dealing and closing finish. Their visual hand counts account for the revealed cards; the engine retains physical ownership. Countered declarations stay visible as public evidence until settlement. Only accepted events are displayed, never eligibility or private work. The first browser-game dealer is chosen randomly; later dealers follow the match rules.
 
-Spectators cannot activate this mechanism, and headless bot tables and shared-screen multiple-human mode retain their existing behavior. A viewer from a previous game cannot pause a replacement game. This is a convenience for trusted local play, not identity authentication.
+The trump tile displays the actual level and trump suit, or a clearly provisional declaration. The score ticket always identifies attacker points and whether your team attacks or defends. While defending it reads “Opponent points / 80”; the goal is to hold that total below 80. Match levels cannot overwrite the level of the deal that just ended.
 
-The presence route carries only a per-page client ID and visibility flag. Bid eligibility, API work, usage counters and private passes remain undisclosed during continuous play; only accepted bids become public.
+Cards arrive on the real dealing clock. Public plays occupy their owners' positions. A finished trick holds for 850ms, flips for 300ms and collects toward its winner for 450ms. This uses the existing `TrickFlow` presentation clock and never delays an engine action or API deadline. Fast updates coalesce instead of creating an animation backlog. Click a played fan or collected-trick marker to inspect all of its cards.
 
-## Behavioral examples to retain
+Dealing flights and trick collection use the actual stack, seat-back and hand positions after layout. Moving the instructions or changing a preference therefore does not leave the animation travelling toward an old percentage-based location. Pointer hit testing and card-flight endpoints convert between viewport pixels and logical scene units. Layout runs on state/size changes; pointer hover continues to use its existing stable geometry and animation controller.
 
-| Situation | Expected result |
-| --- | --- |
-| Human chooses seven cards for burial | Submit disabled; explains one more is needed |
-| Human holds a pair but selects two singles to follow a pair | Explains the pair obligation; no network action |
-| Human scrolls a long hand while cards arrive | Existing cards and scroll position remain |
-| Two rapid submit clicks | One HTTP action, one game transition |
-| A late single bid loses to an accepted single | Silently discarded; no upgrade or fallback bid |
-| Browser disappears for four seconds | Table continues and reconnects |
-| All sole-human windows disappear for five seconds | Table pauses with an explanation |
-| Request allowance is zero | No API requests; preserved 陪练 acts as fallback |
-| Local save has invalid cards, usage or clock data | Rejected before replacing the current table |
-| WebGL unavailable or lost | CSS table; all cards and controls still work |
-| The next API lead arrives during collection | The completed four-player trick still flips and collects; the new play follows |
-| The last trick contains zero points | The winner and covered pile remain explicit |
-| Match levels advance from 2 after scoring | The current-deal bar still says 打 2 |
-| A compact fan cannot show every card | Its total and ＋N badge are visible; opening it shows the full trick |
+The result panel displays the winning team, trick points, kitty calculation, updated levels and the revealed kitty. It offers Next deal or Main menu. Passing A is labeled as completing the match, not as a joker rank.
 
-The offline rules/provider suite and browser fixtures verify these behaviors. See [verification](verification.md) for measured results and remaining limits.
+## Learning, records and privacy
 
+Notebook tabs show factual card memory, public history and permitted usage records. Current-deal usage remains deferred during continuous play, including while menus or the notebook are open. Previous-game usage remains available. The atlas supplies visible joker pictures in the notebook too.
 
-## Restart and API configuration
+Learn can be enabled during play. Its questions derive from the human's permitted information after a trick. Answering, revealing an explanation or closing the exercise does not send an API request, pause the game or change its score. The handoff curtain also suppresses private notebook/quiz material until the next human takes over.
 
-The toolbar exposes **重新开始** and **下一局**. Restart confirmation explains that levels reset and existing API consumption remains; canceling has no game effect. Next-deal controls are enabled only at a completed deal. Recent table usage stays visible after restart.
+The existing cookie/CSRF boundary, session-owned in-memory keys, private observations, shared 12-second deadline, continuous-dealing privacy and save/restore behavior are retained. The browser never receives a shuffle seed or all hands. No demo-state endpoint is added; controlled browser fixtures live in ignored local output.
 
-**API 连接** manages the browser's own keys, endpoints and model/price lists. The key field clears after submission or close, while success and error feedback stays inside the dialog. No paid probe is triggered by saving. Changing connections pauses active play. With no key, API seats explicitly identify their 陪练 fallback instead of implying a model is active.
+## Rendering and retirement
+
+Cards and controls are accessible HTML. Pixel portraits are small SVGs; court art is one local WebP atlas; rank and suit glyphs are small code-native SVGs. Symmetric pip fields reserve both index corners; court figures keep their 2:3 proportions and are centered. CSS crops atlas cell edges and blends the paper without changing the retained source atlas. CSS handles the felt, buttons and short card animations. Reduced motion disables decorative movement. No WebGL dependency is required. Optional audio is synthesized locally only after a user gesture.
+
+Visual reference: [Balatro official press kit](https://www.playbalatro.com/press-kit/). Its card hierarchy and pixel details informed the refinements; the retained generated atlas remains unchanged.
+
+The previous table renderer, its CSS, mesh, Blender sources and Three.js runtime dependency have been removed from the current tree. Historical commits remain the rollback record; they are not selectable game versions. New interface work must update the canonical pixel game, not add another standalone hand lab.

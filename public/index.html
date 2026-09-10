@@ -1,51 +1,61 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#174e40">
-  <title>八十分 · Eighty</title>
-  <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="/table-flow.css">
-  <link rel="stylesheet" href="/connections.css">
-  <script type="module" src="/app.js"></script>
-</head>
-<body>
-  <header class="masthead">
-    <a class="brand" href="/"><span class="brand-mark">八十</span><span>八十分<small>EIGHTY · SHANGHAI</small></span></a>
-    <span class="local-label"><i></i> <span id="connectionLabel">正在连接</span></span>
-    <button class="quiet" id="connectionsButton">API 连接 <span id="apiConnectionCount"></span></button>
-    <button class="quiet" id="rulesButton">玩法与约定 <span>↗</span></button>
-  </header>
-  <main class="layout">
-    <section class="play-column">
-      <div class="intro"><div><span class="eyebrow">一副好牌，也是一场好配合</span><h1>坐下来，打一局。</h1></div><p>四人，两队。<br>从二开始，默契升级。</p></div>
-      <div id="toolbar" class="toolbar"></div>
-      <div id="tableStatus" class="table-status" role="status" hidden></div>
-      <p id="turnAnnouncement" class="sr-only" role="status"></p>
-      <div id="gameArea"></div>
-      <div id="notice" role="status" class="notice" hidden></div>
-      <section class="history-panel"><div class="section-heading"><h2>牌桌记录</h2><span>每一手都有迹可循</span></div><div id="history" class="history"></div></section>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#245348"><title>八十分 · Eighty</title><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/pixel.css"><link rel="stylesheet" href="/table-layout.css"><link rel="stylesheet" href="/connections.css"><script type="module" src="/app.js"></script></head>
+<body data-four-color="on" data-motion="on">
+<div id="notice" class="notice" role="status" hidden></div>
+<main>
+<section id="mainMenu" class="screen menu-screen" aria-label="主菜单">
+  <div class="menu-table" aria-hidden="true"></div><label class="menu-language language-picker"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 2v3M5 5c0 6 4 10 8 11M13 5c0 6-4 10-10 12M14 21l4-11 4 11M15.5 17h5"/></svg><select id="languageSelect" aria-label="语言 / Language"><option value="zh">中文</option><option value="en">English</option></select></label><div class="menu-layout"><div class="menu-copy"><p class="eyebrow">SHANGHAI · PARTNERSHIP CARD GAME</p><h1 id="menuTitle">八十分</h1><p id="menuTagline" class="tagline">一副好牌，一位好搭档。</p><nav class="menu-actions" aria-label="游戏菜单"><button class="primary" id="continueGame" hidden>继续游戏</button><button class="primary" id="menuStart" disabled>开始游戏</button><button class="secondary" id="rulesButton">玩法规则</button><button class="secondary" id="settingsButton">设置</button><button class="secondary" id="creditsButton">制作与鸣谢</button></nav><p id="menuSummary" class="menu-summary"></p><p id="resumeSummary" class="fine"></p></div><div id="menuArt" class="menu-art" aria-hidden="true"></div></div><footer class="menu-footer"><span id="connectionLabel">正在连接</span><span>108 CARDS · 4 SEATS · 2 TEAMS</span></footer>
+</section>
+<section id="settingsView" class="screen settings-screen" aria-label="通用设置" hidden>
+  <header class="page-heading"><button class="secondary" id="settingsBack">← 主菜单</button><h1 id="settingsTitle">通用设置</h1></header>
+  <p id="settingsScope" class="muted"></p>
+  <div class="general-settings">
+    <section class="settings-card"><h2 id="appearanceTitle">画面与可读性</h2>
+      <label class="option-row"><span id="handSizeLabel">手牌大小</span><select id="handSize"><option value="0.9">紧凑</option><option value="1" selected>标准</option><option value="1.15">大</option></select></label>
+      <label class="option-row"><span id="tableSizeLabel">桌面出牌大小</span><select id="tableSize"><option value="0.85">紧凑</option><option value="1" selected>标准</option><option value="1.2">大</option></select></label>
+      <label class="option-row"><span id="textSizeLabel">文字大小</span><select id="textSize"><option value="1">标准</option><option value="1.15">大</option><option value="1.3">更大</option></select></label>
+      <label class="option-row"><span id="fourColorLabel">四色花色</span><input id="fourColor" type="checkbox" checked></label><p id="fourColorHelp" class="fine"></p>
+      <label class="option-row"><span id="textureLabel">复古屏幕纹理</span><input id="tableTexture" type="checkbox" checked></label>
+      <div id="appearancePreview" class="appearance-preview" aria-hidden="true"></div><button class="secondary" id="galleryButton">查看整副牌面</button>
     </section>
-    <aside class="sidebar">
-      <details class="panel setup-panel" id="setupPanel" open><summary class="section-heading"><h2>四席入座</h2><span>设置座位 ＋</span></summary><p class="muted">每个座位，由你决定谁来打。</p><div id="setup"></div></details>
-      <section class="panel"><div class="section-heading"><h2>这一桌的 AI</h2><span class="tiny-tag">可观察</span></div><div id="metrics"></div><p class="fine">离线模拟不调用模型。API 每次最多等待 12 秒，超时由陪练代打。</p></section>
-      <section class="panel training-panel"><div class="section-heading"><h2>边打边学</h2><label class="switch"><input id="trainingToggle" type="checkbox" aria-label="开启记牌训练"><span></span></label></div><p class="muted">练习记牌，也练习判断。</p><div id="training"><p class="fine">开启后，在牌局中回答断门与大牌问题。练习在本地运行，不增加 API 请求。</p></div></section>
-      <section class="panel appearance-panel"><div class="section-heading"><h2>立体牌桌</h2><label class="switch"><input id="depthToggle" type="checkbox" checked aria-label="开启立体牌桌"><span></span></label></div><p class="fine">柔和光影，轻微视差。也可以关掉，专心打牌。</p></section>
-      <footer class="sidebar-footer">SHANGHAI RULES · 108 CARDS<br><span>人、陪练，与模型，同坐一桌。</span></footer>
+    <section class="settings-card"><h2 id="interactionTitle">手感与辅助</h2>
+      <label class="option-row"><span id="motionLabel">动态效果</span><input id="cardMotion" type="checkbox" checked></label><p id="motionHelp" class="fine"></p>
+      <label class="option-row"><span id="dragPlayLabel">拖出单牌直接出牌</span><input id="dragToPlay" type="checkbox" checked></label><p id="dragPlayHelp" class="fine"></p>
+      <label class="option-row"><span id="hintsLabel">操作提示</span><input id="showHints" type="checkbox" checked></label>
+      <label class="option-row"><span id="soundLabel">牌桌音效</span><input id="tableSound" type="checkbox"></label>
+      <label class="option-row"><span id="volumeLabel">音量</span><input id="soundVolume" type="range" min="0" max="100" value="35"></label>
+      <p id="handLayoutHelp" class="fine"></p><h2 id="learnSettingsTitle">边玩边学</h2><p id="learnSettingsHelp" class="fine"></p>
+      <button class="quiet" id="resetPreferences">恢复默认偏好</button>
+    </section>
+  </div>
+</section>
+<section id="newGameView" class="screen settings-screen setup-screen" aria-label="新游戏" hidden>
+  <header class="page-heading"><button class="secondary" id="setupBack">← 主菜单</button><div><span class="eyebrow" id="setupEyebrow">NEW TABLE</span><h1 id="newGameTitle">准备入座</h1></div></header>
+  <p id="setupScope" class="muted"></p>
+  <div class="settings-layout"><section id="setupPanel"><h2 id="seatSettingsTitle">四席入座</h2><div id="setup"></div></section>
+    <aside class="settings-side"><section class="settings-card"><h2 id="partnershipTitle">隔桌是搭档</h2><div class="setup-compass" aria-hidden="true"><span class="compass-north">北</span><span class="compass-west">西</span><b>↕ ↔</b><span class="compass-east">东</span><span class="compass-south">南</span></div><p id="partnershipHelp" class="fine"></p></section>
+      <section class="settings-card"><h2 id="apiSettingsTitle">自己的 API</h2><p id="apiSettingsHelp" class="fine"></p><button class="secondary" id="connectionsButton">API 连接 <span id="apiConnectionCount"></span></button><button class="quiet" id="settingsUsage">用量记录</button></section>
     </aside>
-  </main>
-  <dialog id="restartDialog"><button class="dialog-close" id="closeRestart" aria-label="取消重开">×</button><span class="eyebrow">重新开始</span><h2>用当前座位重开一桌？</h2><p>当前牌局会结束，双方从 2 重新开始。已经产生的 API 用量不会撤销，会保留在历史记录中；新桌使用当前牌桌的座位和请求上限。</p><div class="dialog-actions"><button class="secondary" id="cancelRestart">继续当前牌局</button><button class="primary" id="confirmRestart">确认重新开始</button></div></dialog>
-  <dialog id="connectionsDialog"><button class="dialog-close" id="closeConnections" aria-label="关闭 API 连接">×</button><span class="eyebrow">使用自己的 API</span><h2>模型、套餐，由你选择</h2><p class="connection-explanation">key 只保存在本浏览器会话对应的服务端内存中，不写入网页存储、牌谱或存档。关闭页面后约 30 分钟清除，重启服务也会清除。使用他人部署的站点时，其服务端会接触你的 key。</p><div class="connections-layout"><div><div id="connectionList"></div><button class="secondary" id="newConnection" type="button">＋ 自定义连接 / 套餐</button><button class="quiet danger" id="forgetAllKeys" type="button">清除所有 key</button></div><form id="connectionForm" autocomplete="off">
-    <label>连接名称<input id="connectionName" required maxlength="50"></label>
-    <label>接口协议<select id="connectionProtocol"><option value="qwen">OpenAI Chat Completions 兼容</option><option value="openai">OpenAI Responses</option><option value="claude">Anthropic Messages</option></select></label>
-    <label>API 基础地址<input id="connectionUrl" type="url" required placeholder="https://example.com/v1" autocomplete="off" spellcheck="false"></label><p class="fine">填写基础地址，不带 /chat/completions 等具体接口。更换地址会停用原 key，需要重新输入。</p>
-    <label>自己的 API key<input id="connectionKey" type="password" autocomplete="off" spellcheck="false" maxlength="4096"></label>
-    <label>模型列表<textarea id="connectionModels" rows="6" required spellcheck="false" placeholder="每行：模型ID | 输入参考价 | 输出参考价"></textarea></label><p class="fine">每行一个模型。可只填模型 ID，或附上 USD / 百万 tokens 参考价。例如 model-name | 0.15 | 0.47。只添加支持文字和工具调用的模型；价格不代表实际套餐扣费。</p>
-    <p id="connectionStatus" class="connection-feedback" role="status"></p><div class="dialog-actions"><button class="primary" id="saveConnection" type="submit">保存 / 启用 API</button><button class="quiet" id="forgetConnection" type="button">清除此 key</button><button class="quiet danger" id="deleteConnection" type="button" hidden>删除连接</button></div><p class="fine">保存不会发起付费测试。正在进行的牌局会暂停，以便你确认新配置后继续。</p>
-  </form></div></dialog>
+  </div>
+</section>
+<section id="gameView" class="screen game-screen" aria-label="牌桌" hidden><p id="turnAnnouncement" class="sr-only" role="status"></p><div id="gameArea"></div></section>
+</main>
+<dialog id="pauseDialog" class="small-dialog"><span class="eyebrow">EIGHTY</span><h2 id="pauseTitle">休息一下</h2><p id="pauseReason" class="fine"></p><div class="menu-actions"><button class="primary" id="resumeGame">继续游戏</button><button class="secondary" id="pauseRules">玩法规则</button><button class="secondary" id="autoplay">托管</button><button class="secondary" id="pauseMenu">返回主菜单</button></div></dialog>
+<dialog id="restartDialog" class="small-dialog"><button class="dialog-close" id="closeRestart" aria-label="关闭">×</button><h2 id="newMatchTitle">开始新的对局？</h2><p id="newMatchHelp"></p><div class="dialog-actions"><button class="secondary" id="cancelRestart">取消</button><button class="primary" id="confirmRestart">开始新对局</button></div></dialog>
+<dialog id="bookDialog" class="book-dialog"><button class="dialog-close" id="closeBook" aria-label="合上记牌簿">×</button><h2 id="bookTitle">记牌簿</h2><div class="book-tabs"><button class="secondary" data-book-tab="notebook">记牌</button><button class="secondary" data-book-tab="history">牌桌记录</button><button class="secondary" data-book-tab="metrics">AI 用量</button></div><div id="notebook"></div><div id="history" class="history" hidden></div><div id="metrics" hidden></div></dialog>
+<dialog id="lessonDialog" class="small-dialog training-panel"><button class="dialog-close" id="closeLesson" aria-label="关闭练习">×</button><h2 id="lessonTitle">边玩边学</h2><label class="option-row"><span id="learnToggleLabel">开启练习</span><input id="trainingToggle" type="checkbox"></label><p id="lessonHelp" class="fine"></p><div id="training"></div><button class="secondary" id="skipLesson">回到牌桌</button></dialog>
+<dialog id="galleryDialog"><button class="dialog-close" id="closeGallery" aria-label="Close gallery">×</button><h2 id="galleryTitle">整副牌面</h2><div id="galleryContent"></div></dialog>
+<dialog id="creditsDialog" class="small-dialog"><button class="dialog-close" id="closeCredits" aria-label="关闭鸣谢">×</button><span class="eyebrow">EIGHTY</span><h2 id="creditsTitle">制作与鸣谢</h2><div id="creditsContent"></div></dialog>
+<dialog id="connectionsDialog"><button class="dialog-close" id="closeConnections" aria-label="关闭 API 连接">×</button><span class="eyebrow" id="connectionEyebrow">BRING YOUR OWN AI</span><h2 id="connectionTitle">连接你的模型</h2><p class="connection-explanation" id="connectionPrivacy"></p><p id="connectionSeatHint" class="connection-seat-hint" hidden></p><div class="connections-layout"><div><div id="connectionList"></div><button class="secondary" id="newConnection" type="button">＋ 添加连接</button><button class="quiet danger" id="forgetAllKeys" type="button">清除所有 key</button></div><form id="connectionForm" autocomplete="off">
+  <label><span id="protocolLabel">接口协议</span><select id="connectionProtocol"><option value="qwen">OpenAI Chat Completions</option><option value="openai">OpenAI Responses</option><option value="claude">Anthropic Messages</option></select></label>
+  <label><span id="baseUrlLabel">API 基础地址</span><input id="connectionUrl" type="url" required placeholder="https://example.com/v1" autocomplete="off" spellcheck="false"></label><p class="fine" id="baseUrlHelp"></p>
+  <label><span id="keyLabel">API key</span><input id="connectionKey" type="password" autocomplete="off" spellcheck="false" maxlength="4096"></label>
+  <button class="secondary discover-button" id="discoverModels" type="button">连接并读取模型</button><p id="discoveryHelp" class="fine"></p>
+  <label><span id="connectionNameLabel">连接名称</span><input id="connectionName" maxlength="50"></label>
+  <label><span id="modelListLabel">可用模型</span><textarea id="connectionModels" rows="5" spellcheck="false"></textarea></label><p class="fine" id="modelListHelp"></p>
+  <div id="discoveredPrices" class="discovered-prices"></div><p id="connectionStatus" class="connection-feedback" role="status"></p>
+  <div class="dialog-actions"><button class="primary" id="saveConnection" type="submit">保存连接</button><button class="quiet" id="forgetConnection" type="button">清除此 key</button><button class="quiet danger" id="deleteConnection" type="button" hidden>删除连接</button></div>
+</form></div></dialog>
   <dialog id="trickDialog"><button class="dialog-close" id="closeTrick" aria-label="关闭上一墩">×</button><div id="trickContent"></div></dialog>
-  <dialog id="rulesDialog"><button class="dialog-close" id="closeRules" aria-label="关闭玩法">×</button><span class="eyebrow">上海规则 · v0.7.14 参考版</span><h2>八十分，怎么打？</h2><p>四人两两搭档，南北一队、东西一队。两副牌共 108 张，每人 25 张，庄家拿八张底牌后再扣回八张。</p><p><b>亮主：</b>逐张发牌时，用已拿到的级牌亮主。更强的牌可反主；自己亮的单张可加固成同花色对子。王对可反成无主。无人亮时为无主。</p><p><b>跟牌：</b>有领出的有效花色就尽量跟足；有对子必须跟对子，有拖拉机必须按要求跟。级牌和王始终属于主牌。</p><p><b>得分：</b>5 为 5 分，10 和 K 各 10 分。闲家拿到 80 分上台。闲家赢最后一墩时，底牌分乘以该墩领出张数的两倍。</p><p><b>升级：</b>默认必打 2、5、10、K。必须在关卡上坐庄守住，才能越过该关。打过 A 获胜。可在开桌前设置重发规则或速通阶梯。</p><hr><p class="fine">单人牌桌连续发牌，可随时亮主；发完后至少保留 5 秒反主时间，有效亮主会重置倒计时。AI 在后台思考，过期叫主静默作废。多人共享同一设备时采用有序交接模式。陪练策略来自 ChannonTian/80fen（Apache 2.0），引擎与界面独立实现。</p></dialog>
-</body>
-</html>
+  <dialog id="rulesDialog"><button class="dialog-close" id="closeRules" aria-label="关闭玩法">×</button><span class="eyebrow">上海规则 · v0.7.14 参考版</span><h2>八十分，怎么打？</h2><p>四人两两搭档，南北一队、东西一队。两副牌共 108 张，每人 25 张，庄家拿八张底牌后再扣回八张。</p><p id="firstDealerRule">首局随机选庄，庄家和搭档防守，另一队攻击。亮主只决定主花色；之后按上一局的结果轮换庄家。</p><p><b>亮主：</b>逐张发牌时，用已拿到的级牌亮主。更强的牌可反主；自己亮的单张可加固成同花色对子。王对可反成无主。无人亮时为无主。</p><p><b>跟牌：</b>有领出的有效花色就尽量跟足；有对子必须跟对子，有拖拉机必须按要求跟。级牌和王始终属于主牌。</p><p><b>得分：</b>5 为 5 分，10 和 K 各 10 分。闲家拿到 80 分上台。闲家赢最后一墩时，底牌分乘以该墩领出张数的两倍。</p><p><b>升级：</b>默认必打 2、5、10、K。必须在关卡上坐庄守住，才能越过该关。打过 A 获胜。可在开桌前设置重发规则或速通阶梯。</p><hr><p class="fine">单人牌桌连续发牌，可随时亮主；发完后至少保留 5 秒反主时间，有效亮主会重置倒计时。AI 在后台思考，过期叫主静默作废。多人共享同一设备时采用有序交接模式。陪练策略来自 ChannonTian/80fen（Apache 2.0），引擎与界面独立实现。</p></dialog>
+</body></html>

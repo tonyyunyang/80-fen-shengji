@@ -1,0 +1,289 @@
+/* One measured play field above the hand;
+controls have their own row. */
+.table-card-size{
+  position:absolute;
+  width:var(--table-w);
+  height:calc(var(--table-w) * 1.5);
+  visibility:hidden;
+  pointer-events:none;
+  contain:strict;
+}
+.seat-hand{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  min-height:36px;
+}
+.seat-hand .backs{
+  margin:0;
+}
+.seat-history{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:calc(30px * var(--text-scale));
+}
+.seat-count{
+  white-space:nowrap;
+}
+.seat-count small{
+  font-size:10px;
+}
+.seat.west,.seat.east{
+  top:var(--side-seat-y,35%);
+}
+.trump-marker .kitty-pocket{
+  position:static;
+  inset:auto;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:5px;
+  font-size:calc(11px * var(--text-scale));
+  white-space:nowrap;
+}
+.kitty-backs{
+  display:flex;
+  align-items:center;
+}
+.trump-marker .kitty-pocket .card-back{
+  width:19px;
+  height:27px;
+}
+.trump-marker .kitty-pocket .card-back+.card-back{
+  margin-left:-13px;
+}
+.played-slot{
+  width:var(--fan-max,28%);
+  max-width:none;
+}
+.played-slot.north,.declaration-pile.north{
+  top:var(--north-y,30%);
+}
+.played-slot.south{
+  top:var(--south-y,53%);
+}
+.played-slot.west,.played-slot.east,.declaration-pile.west,.declaration-pile.east{
+  top:var(--side-y,42%);
+}
+.played-slot.west,.declaration-pile.west{
+  left:var(--west-x,24%);
+}
+.played-slot.east,.declaration-pile.east{
+  left:var(--east-x,76%);
+}
+.played-slot .flip-card+.flip-card{
+  margin-left:calc(-1 * var(--fan-overlap,calc(var(--table-w) * .25)));
+}
+.play-caption{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  max-width:none;
+  white-space:nowrap;
+  min-height:1.5em;
+}
+.play-caption>span:last-child{
+  flex-shrink:0;
+}
+.play-seat{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+.hand-footer{
+  display:grid;
+  grid-template-columns:minmax(115px,1fr) minmax(0,3fr) auto;
+  align-items:center;
+  column-gap:18px;
+  row-gap:10px;
+  margin-top:12px;
+  min-height:84px;
+  padding:10px 0 0;
+  border-top:1px solid #c1cba126;
+}
+.hand-footer .turn-message{
+  position:static;
+  inset:auto;
+  z-index:auto;
+  min-width:0;
+  min-height:70px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  pointer-events:auto;
+  font-size:calc(17px * var(--text-scale));
+  line-height:1.4;
+}
+.turn-message strong{
+  font-weight:650;
+}
+.turn-message small{
+  font-size:calc(12px * var(--text-scale));
+  min-height:1.55em;
+}
+.turn-message .hand-help{
+  display:block;
+  font-size:11px;
+  margin-top:3px;
+  opacity:.72;
+}
+.turn-message #resumeInline{
+  margin:5px auto 0;
+  min-height:36px;
+  padding:5px 14px;
+}
+.hand-actions{
+  justify-self:end;
+}
+.bidding-footer{
+  position:static;
+  inset:auto;
+  grid-column:1/-1;
+  margin:0;
+  text-align:center;
+}
+.bid-options{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.bidding-footer:empty{
+  display:none;
+}
+.drop-target{
+  z-index:24;
+}
+/* The opposite seat uses the logical scene width at every viewport size. */
+.seat.north{
+  display:grid;
+  grid-template-columns:78px minmax(0,1fr);
+  column-gap:14px;
+  row-gap:6px;
+  max-width:310px;
+}
+.seat.north .portrait{
+  grid-column:1;
+  grid-row:1/4;
+  justify-self:center;
+}
+.seat.north .seat-name{
+  grid-column:2;
+  grid-row:1;
+}
+.seat.north .seat-role{
+  grid-column:2;
+  grid-row:2;
+  justify-self:center;
+}
+.seat.north .seat-hand{
+  grid-column:2;
+  grid-row:3;
+}
+.seat.north .seat-history{
+  position:absolute;
+  right:calc(100% + 14px);
+  bottom:0;
+  min-width:max-content;
+}
+.seat.north .dealer{
+  left:-10px;
+  top:47px;
+}
+.seat-role{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-width:0;
+}
+.seat.north .seat-role{
+  max-width:195px;
+}
+.turn-message strong{
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.hand-footer .turn-message small{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  min-height:3.1em;
+  max-height:3.1em;
+  overflow:hidden;
+}
+.trump-marker{
+  display:grid;
+  grid-template-columns:auto auto;
+  column-gap:12px;
+  row-gap:6px;
+}
+.trump-tile{
+  grid-column:1;
+  grid-row:1/3;
+}
+.trump-copy{
+  grid-column:2;
+  grid-row:1;
+  align-self:end;
+}
+.trump-marker .kitty-pocket{
+  grid-column:2;
+  grid-row:2;
+  margin-top:0;
+  align-self:start;
+}
+.status-title{
+  display:flex;
+  justify-content:center;
+  align-items:baseline;
+  gap:12px;
+  min-width:0;
+}
+.status-title .closing-clock{
+  font-size:1.1em;
+}
+.hand-footer .turn-message small{
+  flex-shrink:0;
+}
+.hand-actions {
+  min-width: calc(260px * var(--text-scale));
+  min-height: 46px;
+  justify-content: flex-end;
+}
+.spectator-status {
+  position: absolute;
+  bottom: 18px;
+  left: 22px;
+  width: var(--spectator-note-width, 28%);
+  z-index: 25;
+}
+.spectator-status .turn-message {
+  position: static;
+  text-align: left;
+  font-size: calc(15px * var(--text-scale));
+}
+.spectator-status .status-title { justify-content: flex-start; flex-wrap: wrap; ;
+}
+.table-caption-size {
+  position: absolute;
+  width: 200px;
+  visibility: hidden;
+  pointer-events: none;
+  contain: layout;
+}
+/* The complete logical table is fitted into this viewport, like a game camera. */
+body[data-screen="game"] { height: 100dvh; overflow: hidden; ;
+}
+.game-screen { max-width: none; min-height: 0; overflow: hidden; ;
+}
+#gameArea { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; ;
+}
+.pixel-game { position: absolute; transform-origin: 0 0; --table-w: calc(110px * var(--table-scale)); ;
+}
+.hand { overflow: clip; touch-action: none; ;
+}

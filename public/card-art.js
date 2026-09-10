@@ -1,12 +1,23 @@
-import { SYMBOLS, rankLabel } from '../src/cards.js';
+import { rankLabel } from '../src/cards.js';
+import { cardGlyph } from './card-glyphs.js';
+const pips = {
+  1:[[50,50]],2:[[50,15],[50,85]],3:[[50,15],[50,50],[50,85]],
+  4:[[20,15],[80,15],[20,85],[80,85]],5:[[20,15],[80,15],[50,50],[20,85],[80,85]],
+  6:[[20,15],[80,15],[20,50],[80,50],[20,85],[80,85]],7:[[20,15],[80,15],[50,32],[20,50],[80,50],[20,85],[80,85]],
+  8:[[20,15],[80,15],[50,32],[20,50],[80,50],[50,68],[20,85],[80,85]],
+  9:[[20,10],[80,10],[20,36],[80,36],[50,50],[20,64],[80,64],[20,90],[80,90]],
+  10:[[20,10],[80,10],[50,23],[20,36],[80,36],[20,64],[80,64],[50,77],[20,90],[80,90]],
+};
+export function courtIndex(card) { return card.suit === 'X' ? card.rank === 16 ? 13 : 12 : ({S:0,H:3,C:6,D:9})[card.suit] + card.rank - 11; }
 
-// Local vector-like card faces: no image download, font dependency, or canvas hit targets.
 export function cardFace(card) {
-  const joker = card.suit === 'X', suit = joker ? '✦' : SYMBOLS[card.suit], rank = rankLabel(card.rank);
-  const corner = '<span class="rank">' + rank + '</span><span class="suit">' + suit + '</span>';
-  const pips = card.rank === 14 ? 1 : Math.min(card.rank, 10);
-  const center = joker ? '<span class="joker-emblem">✦<small>JOKER</small></span>' : card.rank > 10 && card.rank < 14 ?
-    '<span class="court"><span>♛</span><b>' + rank + '</b><i>' + suit + '</i></span>' :
-    '<span class="pips pips-' + pips + '">' + Array.from({ length: pips }, () => '<i>' + suit + '</i>').join('') + '</span>';
-  return '<span class="corner top" aria-hidden="true">' + corner + '</span><span class="card-art" aria-hidden="true">' + center + '</span><span class="corner bottom" aria-hidden="true">' + corner + '</span>';
+  if (card.suit === 'X') {
+    const cell=courtIndex(card);
+    return `<span class="illustration joker-art atlas-${cell}"></span><span class="joker-index atlas-${cell}"></span>`;
+  }
+  const corner=`<b class="rank-glyph">${cardGlyph(rankLabel(card.rank))}</b><span class="suit suit-glyph">${cardGlyph(card.suit)}</span>`;
+  const art=card.rank>=11 && card.rank<=13 ? `<span class="illustration atlas-${courtIndex(card)}"></span>` :
+    `<span class="pips pips-${card.rank===14?1:card.rank}${card.rank===14?' ace':''}">${pips[card.rank===14?1:card.rank].map(([x,y])=>`<i class="pip${y>50?' flip':''}">${cardGlyph(card.suit)}</i>`).join('')}</span>`;
+  return `<span class="corner top">${corner}</span>${art}<span class="corner bottom">${corner}</span>`;
 }
+export function cardBack() { return '<span class="card-back" aria-hidden="true"></span>'; }

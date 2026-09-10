@@ -122,3 +122,53 @@ test('resuming a table without credentials uses peilian without a network attemp
   assert.equal(calls, 0); assert.equal(restored.stats.realRequests, 0); assert.equal(restored.paused, false);
   assert.equal(restored.state.lastAction.source, 'fallback');
 });
+
+test('Messages connections accept a base URL with or without the v1 suffix',()=>{
+  for(const base of ['https://example.com','https://example.com/v1','https://example.com/v1/']){
+    const request=buildRequest(fixture(),{provider:'claude',model:'fixture-model'},{env:{...env,ANTHROPIC_BASE_URL:base}});
+    assert.equal(request.url,'https://example.com/v1/messages');
+  }
+});
+
+test('explicit bounded reasoning settings reserve output space and stay out of default requests', () => {
+  const seat = { provider: 'qwen', model: 'qwen3.8-flash' }, view = fixture();
+  assert.equal(buildRequest(view, seat, { env }).body.thinking_budget, undefined);
+  const body = buildRequest(view, seat, { env, thinking: true, thinkingBudget: 256, maxOutput: 1536 }).body;
+  assert.equal(body.enable_thinking, true); assert.equal(body.thinking_budget, 256);
+  assert.equal(body.tool_choice, 'auto');
+  for (const thinkingBudget of [-1, 1.5, 5000, '256']) {
+    assert.throws(() => buildRequest(view, seat, { env, thinking: true, thinkingBudget }), /Thinking budget/);
+  }
+  assert.throws(() => buildRequest(view, seat, { env, thinking: true, thinkingBudget: 256, reasoningEffort: 'low' }), /cannot be combined/);
+  const custom = buildRequest(view, { provider: 'qwen', model: 'k3-256k' }, { env, reasoningEffort: 'low' }).body;
+  assert.equal(custom.reasoning_effort, 'low');
+  assert.equal(custom.enable_thinking, undefined, 'do not disable an unknown model\'s native reasoning');
+  assert.throws(() => buildRequest(view, seat, { env, reasoningEffort: 'invented' }), /Reasoning effort/);
+});
+
+test('Kimi Code fast mode is explicit, bounded and only applies to the documented host and model IDs',()=>{
+ const view=fixture(),seat={provider:'qwen',model:'kimi-for-coding'};
+ const request=buildRequest(view,seat,{env:{...env,QWEN_BASE_URL:'https://api.kimi.com/coding/v1'},maxOutput:512});
+ assert.equal(request.body.reasoning_effort,'none');assert.equal(request.body.max_tokens,512);
+ assert.equal(request.body.tools,undefined);
+ assert.equal(request.body.tool_choice,undefined);
+ assert.equal(request.body.response_format.type,'json_object');
+ assert.equal(request.actionFormat,'json_action');
+ for(const url of ['https://other.example/coding/v1','https://api.kimi.com/other/v1']){
+  assert.equal(buildRequest(view,seat,{env:{...env,QWEN_BASE_URL:url}}).body.reasoning_effort,undefined);
+ }
+ assert.equal(buildRequest(view,{...seat,model:'unknown'},{env:{...env,QWEN_BASE_URL:'https://api.kimi.com/coding/v1'}}).body.reasoning_effort,undefined);
+});
+
+
+test('Kimi JSON actions remain strict, native-tool provenance stays accurate, and unrelated services are not relaxed',async()=>{
+ const view=fixture(),seat={provider:'qwen',model:'kimi-for-coding'},options={env:{...env,QWEN_BASE_URL:'https://api.kimi.com/coding/v1'},contextProfile:'expert-zh'};
+ const response=content=>async()=>({ok:true,status:200,json:async()=>({choices:[{finish_reason:'stop',message:{content}}],usage:{prompt_tokens:50,completion_tokens:8}})});
+ const good=JSON.stringify({choice:'pass'}),result=await requestAction(view,seat,{...options,fetchImpl:response(good)});
+ assert.deepEqual(result.action,{type:'declare',choice:'pass'});assert.equal(result.metering.actionFormat,'json_action');
+ assert.equal(result.metering.toolCallCount,0);assert.equal(result.metering.actionCount,1);assert.equal(result.simulated,false);
+ for(const content of ['Here is the action: '+good,'```json\n'+good+'\n```','[ '+good+' ]','{"choice":"pass","explanation":"extra"}','null']){
+  await assert.rejects(requestAction(view,seat,{...options,fetchImpl:response(content)}));
+ }
+ await assert.rejects(requestAction(view,seat,{env,fetchImpl:response(good)}),/恰好一个工具调用/);
+});

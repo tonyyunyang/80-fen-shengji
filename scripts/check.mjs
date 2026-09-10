@@ -24,3 +24,7 @@ const provenance = JSON.parse(await readFile(root + '/vendor/peilian/provenance.
 const hash = createHash('sha256').update(await readFile(root + '/vendor/peilian/reference-core.cjs')).digest('hex');
 if (hash !== provenance.coreSha256) throw new Error('Pinned 陪练 changed: review the vendor diff before proceeding');
 console.log('Syntax checked ' + count + ' modules; pinned 陪练 checksum verified.');
+
+const html=(await files(root+'/public')).filter(file=>file.endsWith('.html'));
+if(html.length!==1||html[0]!==root+'/public/index.html')throw new Error('public/index.html must be the only runtime HTML entry.');
+await import('./check-docs.mjs');
