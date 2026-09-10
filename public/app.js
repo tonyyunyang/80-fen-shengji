@@ -17,7 +17,7 @@ import { enhanceDialogs } from './dialogs.js';
 import { createHandDrag } from './hand-drag.js';
 import { handLayout } from './hand-layout.js';
 import { tableLayout, fanOverlap, hasLiveDealFlight, initialSceneScale, fitScene } from './table-layout.js';
-import { selectionError, selectRange, selectPair } from './hand-tools.js';
+import { selectionError, selectRange, selectPair, dragCardIds } from './hand-tools.js';
 import { apiSeatFields, connectionFor, setupConnectionsDialog } from './connections-ui.js';
 import { TrickFlow, tableScope, tableFacts } from './table-flow.js';
 import { mini, pixelSeat, dealMarkers, deckMarkup, closingClock, trickMarkup, resultMarkup, seatLabel, levelLabel, relativePosition, playerName, arrivingCard, declarationMarkup, displayedDeclarations } from './pixel-view.js';
@@ -185,16 +185,17 @@ function handPanel(game){
   else if(playing){
     const error=selectionError(game,[...selected]),collecting=!!tableMotion&&game.phase==='play';
     prompt=collecting?pick('收牌中 · 可以先选牌','Collecting · you can preselect'):decision.phase==='bury'?pick('你是庄家 · 扣下 8 张底牌','You are dealer · bury 8 cards'):decision.phase==='lead'?pick('轮到你领出','Your lead'):pick('跟出 ','Follow with ')+cardCount(game.plays[0].cards.length);
-    help=selected.size?pick('已选 ','Selected ')+selected.size+' · '+(error||pick('准备好了，确认出牌','Ready to confirm')):decision.phase==='bury'?pick('选满 8 张，再确认扣底','Select eight cards, then confirm'):appearance.dragToPlay?(decision.phase==='follow'&&game.plays[0].cards.length>1?pick('点选足够张数后一起出牌 · 单张拖出会滑回','Select the full group, then play · a single drag returns'):pick('点选悬起 · 单张拖出即打 · 多张按出牌','Click to select · drag to play one · confirm groups')):pick('点选或拖出选牌 · 按出牌确认','Click or drag to select · confirm to play');
+    const ready=decision.phase==='bury'?pick('选好了，确认扣底','Ready to bury'):appearance.dragToPlay?pick('拖动任一已选牌一起出 · 也可按出牌','Drag any selected card to play the group · or press Play'):pick('准备好了，确认出牌','Ready to confirm');
+    help=selected.size?pick('已选 ','Selected ')+selected.size+' · '+(error||ready):decision.phase==='bury'?pick('选满 8 张，再确认扣底','Select eight cards, then confirm'):appearance.dragToPlay?pick('点选悬起 · 拖动已选牌可整组出牌','Click to select · drag a selected card to play the group'):pick('点选或拖出选牌 · 按出牌确认','Click or drag to select · confirm to play');
     actions=`<button class="quiet" id="suggest">${pick('帮选','Help select')}</button><button class="quiet" id="clearSelection"${selected.size?'':' disabled'}>${pick('清空','Clear')}</button><button class="primary" id="playCards"${error||collecting?' disabled':''}>${decision.phase==='bury'?pick('确认扣底','Bury cards'):pick('出牌','Play')} ↵</button>`;
   }else{prompt=latest.paused?pick('牌局已暂停','Game paused'):game.score?pick('本局结束','Deal complete'):decision?pick('等待 ','Waiting for ')+escape(seatLabel(game,decision.seat)):pick('等待牌局','Waiting for the table');help=latest.autoplay.includes(viewer)?pick('陪练正在替你打牌，可在暂停菜单收回托管。','A practice bot is playing your hand. Take back control from the pause menu.'):'';}
   const shown=new Set(displayedDeclarations(game).find(row=>row.seat===viewer)?.cards.map(card=>card.id)||[]),visibleHand=game.hand.filter(card=>!shown.has(card.id));
   const staged=game.hand.filter(card=>selected.has(card.id));
-  const draft=playing&&!tableMotion&&decision.phase==='bury'?`<div class="burial-guide"><div class="burial-progress" aria-hidden="true">${Array.from({length:8},(_,index)=>`<i${index<selected.size?' class="filled"':''}></i>`).join('')}</div><strong>${pick('已选 ','Selected ')}${selected.size} / 8 · ${pick('底牌分数 ','Kitty points ')}${points(staged)}</strong><p>${pick('留好控牌，选择八张扣下。若对手赢最后一墩，底牌分会翻倍计入攻分。','Keep control and choose eight cards to bury. If opponents win the last trick, kitty points are multiplied into their score.')}</p></div>`:'';
+  const draft=playing&&!tableMotion&&decision.phase==='bury'?`<div class="burial-guide" data-live-style><div class="burial-progress" aria-hidden="true">${Array.from({length:8},(_,index)=>`<i${index<selected.size?' class="filled"':''}></i>`).join('')}</div><strong>${pick('已选 ','Selected ')}${selected.size} / 8 · ${pick('底牌分数 ','Kitty points ')}${points(staged)}</strong><p>${pick('留好控牌，选择八张扣下。若对手赢最后一墩，底牌分会翻倍计入攻分。','Keep control and choose eight cards to bury. If opponents win the last trick, kitty points are multiplied into their score.')}</p></div>`:'';
   const status=`<div class="turn-message" id="roundProgress"><span class="status-title"><strong>${prompt}</strong>${bidding&&game.phase==='closing'?closingClock(latest.dealClock):''}</span><small title="${escape(help)}">${appearance.hints?help:''}</small>${playing&&appearance.hints?`<span class="hand-help">${pick('← → 移动 · 空格选牌 · Enter 确认','← → move · Space select · Enter confirm')}</span>`:''}${latest.paused&&!game.score?`<button class="primary" id="resumeInline">${pick('继续游戏','Resume')}</button>`:''}</div>`;
   if(game.viewer<0)return `<div class="spectator-status">${status}</div>`;
-  return draft+`<div class="drop-target" id="dropTarget" aria-hidden="true">${decision?.phase==='bury'||!appearance.dragToPlay?pick('松开选择这张牌','Release to select'):decision?.phase==='follow'&&game.plays[0].cards.length>1?pick('本墩需要 '+game.plays[0].cards.length+' 张','This trick needs '+game.plays[0].cards.length+' cards'):pick('松开出单牌','Release to play one card')}</div>`+
-    `<div class="hand-panel" id="handPanel"><div class="hand" id="playerHand" role="group" aria-label="${pick('你的手牌','Your hand')}"><div class="hand-content" id="handContent" data-live-style>${visibleHand.length?visibleHand.map(card=>handCard(card,playing,game)).join(''):`<div class="empty-hand">${viewer<0?pick('公开观战视角','Public spectator view'):game.score?'':pick('手牌将在发牌时到来','Your cards arrive as the deal begins')}</div>`}</div></div><div class="hand-footer"><span class="hand-info${game.dealer===viewer?' is-dealer':''}">${game.dealer===viewer?`<b class="dealer-inline" aria-label="${pick('庄家','Dealer')}">${pick('庄','D')}</b>`:''}${viewer<0?pick('观战','Watching'):pick('手牌 ','Hand · ')+cardCount(game.hand.length)}<small>${viewer<0?'':pick('你 · ','You · ')+directions[viewer]+(game.dealer===viewer?pick(' · 庄家',' · dealer'):'')}</small></span>${status}<div class="hand-actions">${actions}</div>${bids?`<div class="bidding-footer"><div class="bid-options">${bids}</div></div>`:''}</div></div>`;
+  return draft+`<div class="drop-target" id="dropTarget" data-live-style aria-hidden="true">${pick('拖到这里出牌','Drop here to play')}</div>`+
+    `<div class="hand-panel" id="handPanel"><div class="hand" id="playerHand" data-live-style role="group" aria-label="${pick('你的手牌','Your hand')}"><div class="hand-content" id="handContent" data-live-style>${visibleHand.length?visibleHand.map(card=>handCard(card,playing,game)).join(''):`<div class="empty-hand">${viewer<0?pick('公开观战视角','Public spectator view'):game.score?'':pick('手牌将在发牌时到来','Your cards arrive as the deal begins')}</div>`}</div></div><div class="hand-footer"><span class="hand-info${game.dealer===viewer?' is-dealer':''}">${game.dealer===viewer?`<b class="dealer-inline" aria-label="${pick('庄家','Dealer')}">${pick('庄','D')}</b>`:''}${viewer<0?pick('观战','Watching'):pick('手牌 ','Hand · ')+cardCount(game.hand.length)}<small>${viewer<0?'':pick('你 · ','You · ')+directions[viewer]+(game.dealer===viewer?pick(' · 庄家',' · dealer'):'')}</small></span>${status}<div class="hand-actions">${actions}</div>${bids?`<div class="bidding-footer"><div class="bid-options">${bids}</div></div>`:''}</div></div>`;
 }
 function bidButton(item,game){const rank=(game.dealerKnown??game.dealer>=0)?game.trumpRank:game.match.levels[viewer%2];return `<button class="secondary" data-bid="${item.id}"${!connected||submitting?' disabled':''}>${item.suit?SYMBOLS[item.suit]+' '+rankLabel(rank)+(item.strength===2?t(' 一对'):t(' 单张')):item.strength===4?t('大王对 · 无主'):t('小王对 · 无主')}</button>`;}
 let fittingTable=false;
@@ -280,26 +281,32 @@ function layoutTable(sceneHeight){
 }
 function bindHand(){
   const root=$('playerHand');if(root!==handHoverRoot){handDrag?.destroy();handHover?.destroy();handResize?.disconnect();handDrag=null;handHover=null;handHoverRoot=root;
-    if(root){handHover=createHandHover(root,{items:()=>[...root.querySelectorAll('.hand-slot')],visual:node=>node.querySelector('.lift'),identity:node=>Number(node.dataset.card),lift:46,selectedLift:38,spread:true,reducedMotion:()=>!appearance.motion,clipToRoot:true,blocked:()=>!!handDrag?.active||!!document.querySelector('dialog[open]')});handDrag=createHandDrag(root,{hover:handHover,allowed:canPlay,toggle:toggleSelection,drop:dropCard,reducedMotion:()=>!appearance.motion||motionPreference.matches,changed:layoutHand});handResize=new ResizeObserver(layoutHand);handResize.observe(root);if(new URLSearchParams(location.search).has('qa'))window.__handHover=handHover;}
+    if(root){handHover=createHandHover(root,{items:()=>[...root.querySelectorAll('.hand-slot')],visual:node=>node.querySelector('.lift'),identity:node=>Number(node.dataset.card),lift:46,selectedLift:38,spread:true,reducedMotion:()=>!appearance.motion,clipToRoot:true,blocked:()=>!!handDrag?.active||!!document.querySelector('dialog[open]')});handDrag=createHandDrag(root,{hover:handHover,allowed:canPlay,toggle:toggleSelection,cards:id=>dragCardIds(latest.game.hand,selected,id),preview:dropFeedback,drop:dropCards,reducedMotion:()=>!appearance.motion||motionPreference.matches,changed:layoutHand});handResize=new ResizeObserver(layoutHand);handResize.observe(root);if(new URLSearchParams(location.search).has('qa'))window.__handHover=handHover;}
   }
-  layoutHand();
+  layoutHand();handDrag?.refresh();
   document.querySelectorAll('.hand-slot').forEach(button=>{
-    button.onclick=event=>{if(event.detail===0&&canPlay())toggleSelection(Number(button.dataset.card),event.shiftKey);};
+    button.onclick=event=>{if(event.detail===0&&canPlay()&&!handDrag?.active)toggleSelection(Number(button.dataset.card),event.shiftKey);};
     button.ondblclick=()=>{if(canPlay()){setSelection(selectPair(latest.game.hand,selected,Number(button.dataset.card)));}};
     button.onfocus=()=>{focusCard=Number(button.dataset.card);document.querySelectorAll('.hand-slot').forEach(node=>node.tabIndex=node===button?0:-1);};
   });
 }
-function dropCard(id){
+function dropFeedback(ids){
   const game=latest.game;
   if(game.pending.phase==='bury'||!appearance.dragToPlay){
-    if(game.pending.phase==='bury'&&selected.size>=8&&!selected.has(id)){notify(pick('只需要 8 张底牌，请先收回一张。','Only eight kitty cards are needed. Unselect one first.'));return false;}
-    selected.add(id);focusCard=id;sound();render();return false;
+    const valid=game.pending.phase!=='bury'||new Set([...selected,...ids]).size<=8;
+    return {valid,selectOnly:true,label:!valid?pick('只需要 8 张底牌，请先收回一张。','Only eight kitty cards are needed. Unselect one first.'):game.pending.phase==='bury'?pick('松开选牌 · 按钮确认扣底','Release to select · use Bury to confirm'):pick('松开选牌 · 按出牌确认','Release to select · press Play to confirm')};
   }
-  const error=selectionError(game,[id]);
-  if(error||tableMotion){notify(error||pick('收牌后再出牌。','Wait for the trick to be collected.'));return false;}
+  const error=selectionError(game,ids)|| (tableMotion?pick('收牌后再出牌。','Wait for the trick to be collected.'):null);
+  return {valid:!error,label:error?pick('放回手牌 · ','Return to hand · ')+error:pick('松开打出 ','Release to play ')+cardCount(ids.length)};
+}
+function dropCards(ids){
+  const feedback=dropFeedback(ids);
+  if(!feedback.valid){notify(feedback.label);return false;}
+  if(feedback.selectOnly){focusCard=ids[0];setSelection(new Set([...selected,...ids]));return false;}
+  const game=latest.game,actor=viewer,decision=game.pending.id,version=game.version;
   // Start after the drag controller has released capture; the envelope is still
-  // validated against the current decision by act() and the server.
-  queueMicrotask(()=>act({type:'play',cardIds:[id]}));return true;
+  // validated by act() and the server. A changed turn cannot reuse this gesture.
+  queueMicrotask(()=>{if(canPlay()&&viewer===actor&&latest.game.id===game.id&&latest.game.version===version&&latest.game.pending.id===decision)act({type:'play',cardIds:ids});});return true;
 }
 function setSelection(next){if(latest?.game?.pending?.phase==='bury'&&next.size>8){notify(pick('只需要 8 张底牌，请先收回一张。','Only eight kitty cards are needed. Unselect one first.'));return;}selected=next;sound();render();}
 function toggleSelection(id,shift=false){focusCard=id;const next=shift?selectRange(latest.game.hand,selected,anchor,id):new Set(selected);if(!shift){next.has(id)?next.delete(id):next.add(id);anchor=id;}setSelection(next);}
@@ -312,7 +319,7 @@ function render(){
   const facts=tableFacts(game),boardClass=game.viewer<0?' spectator':'';
   const header=`<div class="game-top"><div><button class="pixel-button" id="pauseGame">☰ ${pick('菜单','Menu')}</button><span class="match-tag">${pick('第 ','Deal ')}${game.score?game.match.round:game.match.round+1}${pick(' 局','')} · ${pick('南北','S/N')} ${levelLabel(game.match.levels[0])} / ${pick('东西','E/W')} ${levelLabel(game.match.levels[1])}</span></div><div class="game-tools"><button class="quiet" id="bookButton">▤ ${pick('记牌簿','Notebook')}</button><button class="quiet" id="lessonButton" aria-pressed="${appearance.learning}">${appearance.learning?'✦':'◇'} ${pick('边玩边学','Learn')}</button></div></div>`;
   const flight=appearance.motion&&!motionPreference.matches&&!document.hidden&&!latest.paused&&hasLiveDealFlight(game,latest.dealClock,Date.now())?`<span class="deal-flight" data-key="draw-${game.dealt}" aria-hidden="true">${cardBack()}</span>`:'';
-  patchHtml($('gameArea'),`<div class="pixel-game${boardClass}" id="cardTable" data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat,index)=>pixelSeat(game,index,typeName(seat),latest,tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${flight}${trickMarkup(game,tableMotion)}${!tableMotion?resultMarkup(game):''}${handPanel(game)}</div>`);
+  patchHtml($('gameArea'),`<div class="pixel-game${boardClass}" id="cardTable" data-live-style data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat,index)=>pixelSeat(game,index,typeName(seat),latest,tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${flight}${trickMarkup(game,tableMotion)}${!tableMotion?resultMarkup(game):''}${handPanel(game)}</div>`);
 
   const ownTurn={bury:pick('轮到你扣底，请选八张牌。','Your burial. Choose eight cards.'),lead:pick('轮到你领出。','Your lead.'),follow:pick('轮到你跟牌。','Your turn to follow.'),declare:pick('可以亮主。','You may declare trump.'),rebel:pick('请选择是否重新发牌。','Choose whether to redeal.')}[game.pending?.phase];
   $('turnAnnouncement').textContent=tableMotion?seatLabel(game,tableMotion.trick.winner)+pick(' 收下本墩，',' took this trick, ')+tableMotion.trick.points+pick(' 分。',' points.'):game.pending?.seat===viewer?ownTurn||'':'';
@@ -392,7 +399,7 @@ function labels(){
     settingsTitle:['通用设置','General settings'],settingsScope:['画面、手感与辅助偏好。新游戏的坐席和规则在入座时安排。','Appearance, interaction and accessibility. Seats and rules are arranged when starting a new game.'],
     appearanceTitle:['画面与可读性','Appearance & readability'],interactionTitle:['手感与辅助','Interaction & assistance'],handSizeLabel:['手牌大小','Hand card size'],tableSizeLabel:['桌面出牌大小','Table card size'],textSizeLabel:['文字大小','Text size'],textureLabel:['复古屏幕纹理','Retro screen texture'],
     motionLabel:['动态效果','Animation'],motionHelp:['平滑抬牌、微微浮动和收牌动画。关闭后仍可正常看牌与操作；也尊重系统减少动态效果设置。','Smooth hover, gentle motion and trick collection. Turning animation off keeps every control usable. System reduced-motion is respected.'],
-    dragPlayLabel:['拖出单牌直接出牌','Drag to play a single card'],dragPlayHelp:['只有合法单牌会直接打出。需要对子或多张时，单张会滑回手中。关闭则拖动仅选牌。','Only a legal single is played directly. A card slides back when a pair or more cards are required. When off, dragging only selects.'],
+    dragPlayLabel:['拖动出牌','Drag to play'],dragPlayHelp:['拖动任一已选牌，会带起整组已选牌；拖动未选牌，只带起这一张。放到桌上即可合法出牌，不合法会整组滑回。关闭则拖动仅选牌；扣底始终按按钮确认。','Drag any selected card to carry the whole selection; an unselected card moves alone. A legal table drop plays the carried cards; an invalid drop returns them all. When off, dragging only selects. Burial always needs the button.'],
     hintsLabel:['操作提示','Control hints'],soundLabel:['牌桌音效','Table sounds'],volumeLabel:['音量','Volume'],resetPreferences:['恢复默认偏好','Reset preferences'],
     setupBack:['← 主菜单','← Main menu'],setupEyebrow:['NEW TABLE','NEW TABLE'],newGameTitle:['准备入座','Take your seats'],setupScope:['每一席都可以单独安排。南北一队、东西一队；首局随机选庄。','Configure each seat independently. South/North and East/West are partners. The first dealer is random.'],partnershipTitle:['隔桌是搭档','Your partner sits across'],partnershipHelp:['你和对家一起赢。庄家与搭档守庄，另外两人攻分；攻方拿到 80 分就能上台。','You win as a team. The dealer and partner defend; the other team attacks. Attackers take over at 80 points.']
   });
@@ -437,6 +444,7 @@ document.addEventListener('keydown',event=>{
   if(event.ctrlKey||event.metaKey||event.altKey||event.target.matches('input,select,textarea'))return;
   if(document.querySelector('dialog[open]'))return;
   if(event.key==='Escape'){event.preventDefault();if(handDrag?.active){handDrag.cancel();return;}if(selected.size){selected.clear();render();return;}if(['settings','setup'].includes(viewMode))showScreen('menu');else if(viewMode==='game')pauseGame();return;}
+  if(handDrag?.active){if(event.key==='Tab')handDrag.cancel();else{event.preventDefault();return;}}
   if(viewMode!=='game')return;
   if(event.target.matches('.hand-slot')&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){
     const cards=[...document.querySelectorAll('.hand-slot:not(:disabled)')],at=cards.indexOf(event.target),index=event.key==='Home'?0:event.key==='End'?cards.length-1:Math.max(0,Math.min(cards.length-1,at+(event.key==='ArrowLeft'?-1:1)));
@@ -444,6 +452,6 @@ document.addEventListener('keydown',event=>{
   }
   if(event.key==='Enter'&&event.target.closest('#handPanel')&&$('playCards')&&!$('playCards').disabled&&!event.target.matches('button:not(.hand-slot)')){event.preventDefault();$('playCards').click();}
 });
-let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{handDrag?.cancel();render();});});
+let resizeFrame;window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{handDrag?.cancel(true);render();});});
 renderSetup();renderMenu();
 try{const initial=await fetch('/api/state?seat=-1').then(response=>response.json());status=initial.providers;latest=initial;csrfToken=initial.csrf||'';if(config.setupDefaultsVersion<setupDefaultsVersion){config.seats=config.seats.map(seat=>seat.kind==='api'&&seat.provider!=='mock'&&!connectionFor(seat,initial.connections||[])?{...seat,kind:'peilian',provider:'mock',connectionId:undefined,model:''}:seat);config.setupDefaultsVersion=setupDefaultsVersion;storeConfig();}if(initial.game)viewer=initial.game.seats.findIndex(seat=>seat.kind==='human');renderSetup();let returnToGame=false;try{returnToGame=sessionStorage.getItem('eighty-screen')==='game';}catch{}if(initial.game&&!initial.paused&&returnToGame){viewMode='game';$('mainMenu').hidden=true;$('gameView').hidden=false;}connect();}catch(error){connect();renderMenu();notify(t('本地服务暂未连接，正在重试。'));}

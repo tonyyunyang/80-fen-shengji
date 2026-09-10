@@ -25,13 +25,18 @@ Multiple humans can share one device, with a privacy curtain between hands. This
 | --- | --- |
 | Hover over the hand | Smoothly open a reading gap. The hand always stays in one row. |
 | Click | Select or unselect; selected cards lift in your hand. |
-| Drag one card onto the table | Immediately play a legal single. Incompatible or multi-card-follow drops return to your hand. |
+| Drag an unselected card onto the table | Carry only that card. A legal single plays immediately; an incompatible drop returns it. |
+| Select a group, then drag any selected card | Carry the entire selection. A legal drop plays the group; an invalid drop returns every card to its own slot and keeps the selection. |
 | Select several, then Play | Submit a pair, tractor or throw together. |
 | Double-click | Select a matching pair. |
 | Shift + click / arrow | Select a range. |
 | ← / →, Home / End | Move keyboard focus. |
 | Space / Enter | Select / confirm. |
 | Escape | Cancel a drag or selection, then open Pause. |
+
+![Select two cards, drag either one, cancel to return the group, then drag again to play](media/group-drag.gif)
+
+Turn off **Drag to play** in General settings if you prefer dragging only to select. Burial always requires the confirmation button.
 
 **Notebook** shows public card memory and completed tricks. **Learn** offers short optional exercises: skip them freely; they do not change scores or call a model.
 

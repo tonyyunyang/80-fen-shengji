@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Drag any selected card to carry and play the complete selection. Unselected cards still drag individually; the Play button remains available.
+- Carried groups gather into a short fan with a count badge and a legality hint. Invalid drops and cancellations return every card to its own slot while keeping the selection.
+- Preserve stable hover and gesture identities across public redraws, with immediate cancellation on resize and reduced-motion support. Burial continues to require explicit confirmation.
+
 ## 0.2.0 · 2026-09-10 · The pixel table
 
 - One approved pixel table replaces earlier room and hand-lab interfaces.

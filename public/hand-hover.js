@@ -218,6 +218,11 @@ export function createHandHover(root, {
     refresh: invalidate,
     pick(x, y) { if (dirty) measure(); return pickPoint(x, y); },
     element(id) { return entries.find(entry => entry.id === id)?.element ?? null; },
+    restingRect(id) {
+      if (dirty) measure();
+      const entry = entries.find(entry => entry.id === id);
+      return entry && { left: entry.left, top: entry.top - (selected(entry.element) ? selectedLift * sceneScale : 0) };
+    },
     freeze() { frozen = true; if (frame) window.cancelAnimationFrame(frame); frame = 0; previousTime = null; },
     resume() { frozen = false; pointer = null; keyboard = false; change(null); invalidate(); },
     clear,

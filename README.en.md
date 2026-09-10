@@ -36,10 +36,12 @@ Two decks. Four seats. Two partnerships. Someone draws trump, someone brings hom
 | --- | --- |
 | **A true partnership game** | You and the opposite seat share a team. Your opponents sit to the left and right; roles, dealer, trump and attacker points are visible on the table. |
 | **A whole deal—and the next one** | Dealing, declarations and counters, kitty pickup and burial, pairs, tractors, throws, final-trick scoring and progression beyond Ace. |
-| **Cards that feel good to handle** | Both 25-card and 33-card hands stay in one row. Hover opens a reading gap; click selects; a legal single-card drop plays immediately. Select a group to play it together. |
+| **Cards that feel good to handle** | Both 25-card and 33-card hands stay in one row. Hover opens a reading gap; click selects. Drag any selected card to play the group, or an unselected card to play it alone. The Play button works too. |
 | **Pixel character, readable cards** | Original title lettering, pixel portraits, illustrated court cards, monochrome/color jokers and an optional four-color deck. The complete table fits your window. |
 | **Room to learn** | A card notebook, trick review, optional learning prompts, keyboard controls, reduced motion and optional sound. |
 | **Your choice of company** | Mix humans, local practice bots and your own API models by seat. Shared-device hotseat and spectator play are supported. |
+
+[See selected-group dragging →](docs/guide.en.md#handling-the-cards)
 
 ## Meet the deck
 
