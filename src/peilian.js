@@ -34,3 +34,13 @@ export function choosePeilian(view, decisionId = '', { deterministic = false } =
   const result = v.phase === 'lead' ? bot.aiChooseLead(v) : bot.aiChooseFollow(v, v.plays);
   return { type: 'play', cardIds: result.cards.map((card) => card.id) };
 }
+
+// The reference's cheap rollout policy avoids recursively nesting its own
+// Monte Carlo search inside our sampled continuations. Normal practice seats
+// and failure fallback still use choosePeilian unchanged.
+export function practiceRolloutAction(view) {
+  const v=structuredClone(view);Object.assign(bot.RULES,v.rules);
+  const cards=v.phase==='lead'?bot.rolloutLead(v.hand,v.trump,bot.makeMemory(v)):
+    bot.rolloutFollow(v.hand,bot.classify(v.plays[0].cards,v.trump),v.trump,v.plays,v.seat);
+  return cards?.length?{type:'play',cardIds:cards.map(card=>card.id)}:null;
+}

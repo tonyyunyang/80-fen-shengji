@@ -25,10 +25,14 @@ export function validateConfig(input = {}, status = providerStatus()) {
     if (provider && (!PROVIDERS.includes(provider) || !status[provider])) throw new Error('请先配置服务端 API，或选择离线模拟');
     const model = (typeof seat.model === 'string' ? seat.model.trim().slice(0, 120) : '') || (provider === 'qwen' ? DEFAULT_TOKEN_PLAN_MODEL : '');
     if (provider && provider !== 'mock' && !model) throw new Error('真实 API 座位需要模型 ID');
+    if (seat.promptLanguage !== undefined && !['zh','en'].includes(seat.promptLanguage)) throw new Error('提示词语言需要中文或英文');
+    if (seat.endgameAnalysis !== undefined && typeof seat.endgameAnalysis !== 'boolean') throw new Error('残局推演设置需要布尔值');
     return { kind: seat.kind, name: String(seat.name || ['你', '东家', '北家', '西家'][index]).slice(0, 24), provider, model,
+      ...(seat.kind === 'api' ? { promptLanguage: seat.promptLanguage || 'zh', endgameAnalysis: seat.endgameAnalysis !== false } : {}),
       ...(typeof seat.connectionId === 'string' && /^[a-z0-9-]{1,50}$/.test(seat.connectionId) ? { connectionId: seat.connectionId } : {}) };
   });
   const rules = { ...DEFAULT_RULES, gates: input.rules?.gates === false ? [] : [...DEFAULT_RULES.gates] };
+  rules.firstDealer = input.rules?.firstDealer === 'declaration' ? 'declaration' : 'random';
   if (input.rules?.partialTractorFollow === false) rules.partialTractorFollow = false;
   if (['off', 'redeal', 'scramble'].includes(input.rules?.fullRebel)) rules.fullRebel = input.rules.fullRebel;
   rules.speedRun = input.rules?.speedRun === true;

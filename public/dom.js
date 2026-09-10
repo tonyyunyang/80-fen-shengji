@@ -14,7 +14,7 @@ function reconcile(parent, target) {
     }
     if (current.nodeType === 1) {
       if (!current.hasAttribute('data-preserve')) {
-        for (const attr of [...current.attributes]) if (!next.hasAttribute(attr.name)) current.removeAttribute(attr.name);
+        for (const attr of [...current.attributes]) if (!next.hasAttribute(attr.name) && !(attr.name === 'style' && next.hasAttribute('data-live-style'))) current.removeAttribute(attr.name);
         for (const attr of [...next.attributes]) if (current.getAttribute(attr.name) !== attr.value) current.setAttribute(attr.name, attr.value);
         reconcile(current, next);
       }

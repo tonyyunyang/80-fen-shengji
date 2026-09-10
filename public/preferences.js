@@ -1,0 +1,16 @@
+export const DEFAULT_PREFERENCES = Object.freeze({
+  fourColor: true, motion: true, learning: false, texture: true, hints: true,
+  dragToPlay: true, sound: false, volume: 35, handSize: 1, tableSize: 1, textSize: 1,
+});
+
+export function readPreferences(value) {
+  const result = { ...DEFAULT_PREFERENCES };
+  for (const [key, fallback] of Object.entries(result)) {
+    if (typeof fallback === 'boolean' && typeof value?.[key] === 'boolean') result[key] = value[key];
+  }
+  for (const [key, allowed] of Object.entries({ handSize: [.9, 1, 1.15], tableSize: [.85, 1, 1.2], textSize: [1, 1.15, 1.3] })) {
+    if (allowed.includes(value?.[key])) result[key] = value[key];
+  }
+  if (Number.isFinite(value?.volume)) result.volume = Math.min(100, Math.max(0, value.volume));
+  return result;
+}

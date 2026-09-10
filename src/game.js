@@ -16,6 +16,9 @@ export function createGame({ id = 'test', seed = 1, seats = [], rules = {}, deal
     version: 0, decisionNumber: 0, events: [], rounds: [], pending: null,
     attempts: 0, redeals: 0, forcedPasses: 0,
   };
+  // Browser tables choose the first dealer by an independent public cut. The
+  // legacy declaration contest remains explicit for reference fixtures/replays.
+  if (merged.firstDealer === 'random') state.match.dealer = cutFirst((seed ^ 0x51ed270b) >>> 0).seat;
   beginDeal(state);
   return automatic(state);
 }
@@ -240,7 +243,7 @@ export function publicView(state, viewer = -1) {
   return {
     id: state.id, version: state.version, ruleset: state.ruleset, rules: state.rules,
     seats: state.seats, phase: state.phase, dealing: state.dealing || 'ordered', dealt: state.dealt, drawSeat: state.drawSeat, match: state.match,
-    dealer: state.dealer, trump: state.trump, trumpRank: state.trumpRank,
+    dealer: state.dealer, dealerKnown: state.dealerKnown, trump: state.trump, trumpRank: state.trumpRank,
     declaration: state.declaration, pending: state.pending && { ...state.pending, options: permitted && state.pending.seat === viewer ? state.pending.options : null },
     hand: visible?.hand || [], viewer: permitted ? viewer : -1, handSizes: state.hands.map((hand) => hand.length),
     buriedKnown: visible?.buriedKnown || [], plays: state.plays, tricks: state.tricks,

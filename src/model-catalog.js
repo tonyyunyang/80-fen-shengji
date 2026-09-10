@@ -49,3 +49,14 @@ export function tokenPlanRequestOptions(id, maxOutput, toolName, thinking = fals
     tool_choice: model.family !== 'DeepSeek' && !thinking ? { type: 'function', function: { name: toolName } } : 'auto',
   };
 }
+
+// Kimi Code documents `none` as its non-thinking route (currently K2.6).
+// Scope this to the actual managed endpoint; never guess flags for other hosts.
+export function kimiCodeRequestOptions(id, baseUrl, maxOutput, thinking = false, toolName) {
+  let url;
+  try { url = new URL(baseUrl); } catch { return null; }
+  if (url.origin !== 'https://api.kimi.com' || !/^\/coding\/v1\/?$/.test(url.pathname) ||
+      !['k3','k3-256k','kimi-for-coding','kimi-for-coding-highspeed'].includes(id)) return null;
+  return { max_tokens: maxOutput, tool_choice: toolName && !thinking ? { type: 'function', function: { name: toolName } } : 'auto', parallel_tool_calls: false,
+    stream: false, reasoning_effort: thinking ? 'low' : 'none' };
+}

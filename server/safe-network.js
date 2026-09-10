@@ -24,7 +24,8 @@ export function providerUrl(value, { allowLoopback = false } = {}) {
 export function safeProviderFetch({ allowLoopback = false, resolve = lookup, transports = { 'https:': httpsRequest, 'http:': httpRequest } } = {}) {
   return async (value, options) => {
     const url = providerUrl(value, { allowLoopback }), host = url.hostname.replace(/^\[|\]$/g, '');
-    if (options.method !== 'POST' || typeof options.body !== 'string') throw new Error('不支持的提供商请求');
+    const discovery = options.method === 'GET' && /\/models$/.test(url.pathname) && options.body === undefined;
+    if (!discovery && (options.method !== 'POST' || typeof options.body !== 'string')) throw new Error('不支持的提供商请求');
     options.signal?.throwIfAborted();
     let addresses;
     try { addresses = ipaddr.isValid(host) ? [{ address: host, family: ipaddr.parse(host).kind() === 'ipv4' ? 4 : 6 }] : await resolve(host, { all: true, verbatim: true }); }
@@ -34,7 +35,7 @@ export function safeProviderFetch({ allowLoopback = false, resolve = lookup, tra
     const pinned = addresses.find(item => item.family === 4) || addresses[0];
     return new Promise((resolveResponse, reject) => {
       const req = transports[url.protocol](url, {
-        method: 'POST', headers: options.headers, signal: options.signal, agent: false,
+        method: options.method, headers: options.headers, signal: options.signal, agent: false,
         family: pinned.family, autoSelectFamily: false, rejectUnauthorized: true,
         lookup: (_host, opts, callback) => opts?.all ? callback(null, [pinned]) : callback(null, pinned.address, pinned.family),
       }, res => {

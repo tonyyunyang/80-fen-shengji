@@ -1,13 +1,15 @@
+import { errorText } from './errors.js';
+import { t } from './i18n.js';
 import { classify, followError, resolveCards } from '../src/rules.js';
 
 export function selectionError(game, ids) {
-  if (!ids.length) return '先选牌，再出牌';
+  if (!ids.length) return t('先选牌，再出牌');
   let cards;
-  try { cards = resolveCards(game.hand, ids); } catch (error) { return error.message; }
-  if (game.pending?.phase === 'bury') return cards.length === 8 ? null : '底牌需要恰好 8 张，还' + (cards.length < 8 ? '差 ' + (8 - cards.length) : '多 ' + (cards.length - 8)) + ' 张';
-  if (game.pending?.phase === 'follow') return followError(game.hand, cards, classify(game.plays[0].cards, game.trump), game.trump, game.rules);
-  if (game.pending?.phase === 'lead') return classify(cards, game.trump) ? null : '领出的牌需要属于同一有效花色（主牌算一类）';
-  return '现在无需选牌';
+  try { cards = resolveCards(game.hand, ids); } catch (error) { return errorText(error.message); }
+  if (game.pending?.phase === 'bury') return cards.length === 8 ? null : t('底牌需要恰好 8 张，还') + (cards.length < 8 ? t('差 ') + (8 - cards.length) : t('多 ') + (cards.length - 8)) + t(' 张');
+  if (game.pending?.phase === 'follow') return errorText(followError(game.hand, cards, classify(game.plays[0].cards, game.trump), game.trump, game.rules));
+  if (game.pending?.phase === 'lead') return classify(cards, game.trump) ? null : t('领出的牌需要属于同一有效花色（主牌算一类）');
+  return t('现在无需选牌');
 }
 
 export function selectRange(hand, selected, anchor, id) {

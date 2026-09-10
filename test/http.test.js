@@ -30,8 +30,12 @@ test('HTTP boundary, four-seat setup, private views and reload persistence', asy
     assert.equal((await fetch(url)).status, 200);
     assert.equal((await fetch(url + '/src/game.js')).status, 404);
     assert.equal((await fetch(url + '/.env')).status, 404);
-    assert.equal((await fetch(url + '/vendor/three/0.185.1/three.module.min.js')).status, 200);
-    assert.equal((await fetch(url + '/vendor/three/0.185.1/three.core.min.js')).status, 200);
+    const home = await fetch(url).then(response => response.text());
+    assert.ok(home.includes('id="mainMenu"') && home.includes('/pixel.css'));
+    assert.equal((await fetch(url + '/assets/cards/pixel-court.webp')).headers.get('content-type'), 'image/webp');
+    assert.equal((await fetch(url + '/table-scene.js')).status, 404);
+    assert.equal((await fetch(url + '/card-room.css')).status, 404);
+    assert.equal((await fetch(url + '/vendor/three/0.185.1/three.module.min.js')).status, 404);
     assert.equal((await fetch(url + '/node_modules/three/package.json')).status, 404);
     assert.equal((await send('/api/presence', { visible: true })).status, 400);
     assert.equal((await send('/api/start', {}, { origin: 'https://example.invalid' })).status, 403);

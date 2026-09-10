@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to play / 玩家指南
+    url: https://github.com/tonyyunyang/80-fen-shengji/blob/main/docs/README.md
+    about: Rules, setup and common questions.
+  - name: Private security report / 私密安全报告
+    url: https://github.com/tonyyunyang/80-fen-shengji/security/advisories/new
+    about: Please do not publish keys, cookies or vulnerabilities in a public issue.

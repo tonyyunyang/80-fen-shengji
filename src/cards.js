@@ -1,6 +1,6 @@
 export const SUITS = ['S', 'H', 'D', 'C'];
 export const SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣', X: '王', T: '主' };
-export const rankLabel = (rank) => ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: '小王', 16: '大王' })[rank] || String(rank);
+export const rankLabel = (rank, locale = 'zh') => ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A', 15: locale === 'en' ? 'Low Joker' : '小王', 16: locale === 'en' ? 'High Joker' : '大王' })[rank] || String(rank);
 
 export function makeDeck() {
   return Array.from({ length: 108 }, (_, id) => {
@@ -9,7 +9,7 @@ export function makeDeck() {
   });
 }
 export const faceKey = (card) => card.suit + card.rank;
-export const cardLabel = (card) => card.suit === 'X' ? rankLabel(card.rank) : SYMBOLS[card.suit] + rankLabel(card.rank);
+export const cardLabel = (card, locale = 'zh') => card.suit === 'X' ? rankLabel(card.rank, locale) : SYMBOLS[card.suit] + rankLabel(card.rank, locale);
 export const cardPoints = (card) => card.rank === 5 ? 5 : [10, 13].includes(card.rank) ? 10 : 0;
 export const points = (cards) => cards.reduce((total, card) => total + cardPoints(card), 0);
 export function randomSource(seed) {

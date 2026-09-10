@@ -1,6 +1,6 @@
 {
   "name": "eighty-shanghai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,10 +10,20 @@
     "start": "node server/index.js",
     "test": "node --test test/*.test.js",
     "check": "node scripts/check.mjs",
-    "import:peilian": "node scripts/import-peilian.mjs"
+    "import:peilian": "node scripts/import-peilian.mjs",
+    "media:preview": "node scripts/media-preview.mjs"
   },
   "dependencies": {
-    "ipaddr.js": "2.5.0",
-    "three": "0.185.1"
+    "ipaddr.js": "2.5.0"
+  },
+  "description": "A free, open-source Chinese partnership card game with a pixel-art browser table.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tonyyunyang/80-fen-shengji.git"
+  },
+  "homepage": "https://github.com/tonyyunyang/80-fen-shengji#readme",
+  "bugs": {
+    "url": "https://github.com/tonyyunyang/80-fen-shengji/issues"
   }
 }

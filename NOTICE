@@ -1,0 +1,18 @@
+Eighty · 八十分
+Copyright 2026 Tony Yun Yang and contributors
+
+Project-authored code, documentation and artwork are distributed under the
+Apache License, Version 2.0. Third-party works retain their own notices and terms.
+
+This project includes the preserved strategy core from ChannonTian/80fen,
+commit 96f69258b68495904f360a199738b161da4f4998, under Apache-2.0.
+Its license and provenance are retained in vendor/peilian/.
+The application's engine, controller and interface are developed separately.
+
+The runtime dependency ipaddr.js is licensed under the MIT license by its
+contributors. Its license is distributed with the installed package.
+
+Court, joker and card-back illustrations were generated for Eighty with AI.
+Rank/suit glyphs, portraits and title lettering are project artwork.
+Balatro is a visual inspiration; its name, trademarks, code and official assets
+are not included in this project's license. Eighty is an independent project.

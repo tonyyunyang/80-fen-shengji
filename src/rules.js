@@ -3,7 +3,7 @@ import { SUITS, faceKey, effectiveSuit, order, points, cardPoints } from './card
 export const RULESET_ID = 'shanghai-80fen-0.7.14-v1';
 export const DEFAULT_RULES = Object.freeze({
   strictTractorFollow: true, partialTractorFollow: true,
-  gates: [2, 5, 10, 13], fullRebel: 'off', speedRun: false,
+  gates: [2, 5, 10, 13], fullRebel: 'off', speedRun: false, firstDealer: 'declaration',
   pointRebelThreshold: 15, trumpRebelThreshold: 3, maxRedeal: 3,
 });
 export function groups(cards) {
