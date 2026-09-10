@@ -4,8 +4,8 @@ Current version: the integrated pixel game, September 10, 2026. Live AI outcomes
 
 ## Offline gates
 
-- `npm test`: **182 passing tests**.
-- `npm run check`: **87 modules** checked; preserved Peilian checksum verified.
+- `npm test`: **191 passing tests**.
+- `npm run check`: **91 modules** checked; preserved Peilian checksum verified.
 - Coverage retains deterministic rules, all physical card identities, legal following, private observations, cookie/CSRF isolation, provider deadlines and late accounting.
 - New checks cover one-row geometry through 25→33→25, perspective/partner placement, all twelve court images and both jokers, correct team result labels, completed-match levels, and a learning recap after all cards have been played.
 
@@ -65,3 +65,17 @@ The follow-up interaction uses the same engine and interface. Browser checks exe
 [The recorded group gesture](media/group-drag.gif) uses the real client: click both cards, drag from either member, cancel once and then play the pair. It uses local practice opponents and zero API requests.
 
 Raw screenshots, browser reports and recordings belong in ignored `output/playwright/group-drag/`. The controller's offline regression examples cover physical selection identity, unrelated pointers, cancellation, redraws, missing cards and rapid re-grabs.
+
+## Arcade effects
+
+The effects pass was checked on the real client with synthetic local saves and paid request limits fixed at zero. The original atlas, wordmarks, deterministic engine and vendor core remain intact.
+
+- A human/practice/simulated-API deal completed, started its next deal and retained the full selected-group interaction. Pairs, four-card tractors, invalid groups, single-card plays and 33-card burial passed the browser workflows. Both hover directions reached all 33 cards; resize and reduced motion kept cancellation safe.
+- Public trick stamps and score particles appeared during actual collection. The result's accessible name stayed at the final authoritative score while the decorative number counted up. A winning result peaked at 62 decorative elements, below the 80-element cap, and cleared afterward.
+- Full background drawing measured about 28.5 draws/second at a 900×600 buffer in the checked 1440×960 browser; Soft measured about 20 at 640×427. These short observations confirm the configured bounds in that browser, not general device frame-rate guarantees.
+- Effects Off, Animation off, system reduced motion and pause produced zero background draws during their sampled intervals. WebGL unavailable and explicit context loss both showed the CSS fallback with working controls; restoring the context resumed the background.
+- Audio created no context by default. Opting in and interacting created one context; the real final trick and result produced synthesized notes. No paid request or remote audio asset was used.
+- Result panels fit 390×844, 560×740 and 1920×1080. The 33-card hand with maximum card/text settings fit 390×844, 560×740 and 1280×720. English settings retained group-play instructions. Console and page-error collectors reported no errors.
+- Nine offline effect-flow regressions cover public-event allowlisting, history suppression, scope changes, shared dealing counts, coalescing, collection timing, overlay/pause cleanup, authoritative result attribution and preference migration.
+
+Raw captures, fixture generators, reports and the gameplay preview stay in ignored `output/playwright/arcade-polish/`. In this browser, taking a screenshot during a held pointer gesture releases pointer capture; drag assertions therefore sample the frozen hand after pointer-down and use video for the uninterrupted gesture. The release correctly cancels the carried cards, and no production input behavior was altered for the capture tool.

@@ -1,6 +1,6 @@
 export const DEFAULT_PREFERENCES = Object.freeze({
   fourColor: true, motion: true, learning: false, texture: true, hints: true,
-  dragToPlay: true, sound: false, volume: 35, handSize: 1, tableSize: 1, textSize: 1,
+  dragToPlay: true, sound: false, volume: 35, handSize: 1, tableSize: 1, textSize: 1, effects: 'full',
 });
 
 export function readPreferences(value) {
@@ -12,5 +12,6 @@ export function readPreferences(value) {
     if (allowed.includes(value?.[key])) result[key] = value[key];
   }
   if (Number.isFinite(value?.volume)) result.volume = Math.min(100, Math.max(0, value.volume));
+  if (['full', 'soft', 'off'].includes(value?.effects)) result.effects = value.effects;
   return result;
 }

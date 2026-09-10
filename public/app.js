@@ -9,6 +9,8 @@ import { trainingQuestion } from '/src/training.js';
 import { decisionTimeoutMs, MAX_DECISION_MS } from '/src/player-settings.js';
 import { DEFAULT_PREFERENCES, readPreferences } from './preferences.js';
 import { createTableSound } from './table-sound.js';
+import { createAtmosphere } from './atmosphere.js';
+import { createTableEffects } from './table-effects.js';
 import { patchHtml, escapeHtml as escape } from './dom.js';
 import { cardFace, cardBack } from './card-art.js';
 import { createHandHover } from './hand-hover.js';
@@ -47,6 +49,8 @@ let arriving=null, recalled=new Map();
 let csrfToken='',reconnecting=false,connected=false,submitting=false,starting=false,anchor=null,focusCard=null;
 let viewMode='menu',handHover=null,handHoverRoot=null,handDrag=null,handResize=null,tableMotion=null,motionTimer,bookTab='notebook',rulesReturn='menu';
 const clientId=crypto.randomUUID(),trickFlow=new TrickFlow(),motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+const atmosphere=createAtmosphere($('atmosphere'));
+const tableEffects=createTableEffects({preferences:()=>appearance,sound,reducedMotion:()=>motionPreference.matches});
 const text=(id,zh,en)=>{$(id).textContent=pick(zh,en);};
 function notify(message){$('notice').textContent=errorText(message);$('notice').hidden=false;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').hidden=true,5500);}
 async function post(path,data){const response=await fetch('/api/'+path,{method:'POST',headers:{'content-type':'application/json','x-eighty-csrf':csrfToken},body:JSON.stringify(data),signal:AbortSignal.timeout(8000)});const result=await response.json();if(!response.ok)throw new Error(errorText(result.error)||t('请求失败'));return result;}
@@ -118,6 +122,10 @@ function applyAppearance(save=false){
   const body=document.body;
   for(const key of ['fourColor','texture','hints'])body.dataset[key]=appearance[key]?'on':'off';
   body.dataset.motion=appearance.motion&&!motionPreference.matches&&!document.hidden?'on':'off';
+  body.dataset.effects=appearance.effects;
+  body.dataset.paused=latest?.paused&&viewMode==='game'?'true':'false';
+  $('effectQuality').value=appearance.effects;
+  atmosphere.update({effects:appearance.effects,motion:body.dataset.motion==='on',screen:viewMode,paused:latest?.paused&&viewMode==='game'});
   for(const [id,key] of Object.entries({fourColor:'fourColor',cardMotion:'motion',trainingToggle:'learning',tableTexture:'texture',showHints:'hints',dragToPlay:'dragToPlay',tableSound:'sound'}))$(id).checked=appearance[key];
   for(const id of ['handSize','tableSize','textSize']){$(id).value=String(appearance[id]);body.style.setProperty('--'+id.replace('Size','-scale'),appearance[id]);}
   $('soundVolume').value=appearance.volume;$('soundVolume').disabled=!appearance.sound;
@@ -167,7 +175,7 @@ function canPlay(){const game=latest?.game;return viewMode==='game'&&connected&&
 function handCard(card,enabled,game){
   const trump=game.trump&&(card.suit==='X'||card.rank===game.trump.rank||card.suit===game.trump.suit);
   const tab=card.id===focusCard||!game.hand.some(c=>c.id===focusCard)&&card.id===game.hand[0]?.id;
-  return `<button class="hand-slot" data-live-style data-recalled="${Date.now()-(recalled.get(card.id)||0)<450}" data-arriving="${arriving?.id===card.id&&Date.now()-arriving.at<350}" data-card="${card.id}" tabindex="${tab?'0':'-1'}" aria-label="${escape(cardLabel(card))+pick(' 第'+(card.id>=54?'二':'一')+'张',' · copy '+(card.id>=54?2:1))+(trump?pick('，主牌',', trump'):'')}" aria-pressed="${selected.has(card.id)}"${enabled?'':' disabled'}><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></button>`;
+  return `<button class="hand-slot" data-live-style data-trump="${!!trump}" data-recalled="${Date.now()-(recalled.get(card.id)||0)<450}" data-arriving="${arriving?.id===card.id&&Date.now()-arriving.at<350}" data-card="${card.id}" tabindex="${tab?'0':'-1'}" aria-label="${escape(cardLabel(card))+pick(' 第'+(card.id>=54?'二':'一')+'张',' · copy '+(card.id>=54?2:1))+(trump?pick('，主牌',', trump'):'')}" aria-pressed="${selected.has(card.id)}"${enabled?'':' disabled'}><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></button>`;
 }
 function handPanel(game){
   const decision=game.pending,bidding=game.dealing==='continuous'&&['dealing','closing'].includes(game.phase);
@@ -315,11 +323,11 @@ function render(){
   clearTimeout(motionTimer);tableMotion=trickFlow.update(game,{now:performance.now(),paused:latest?.paused,reducedMotion:motionPreference.matches||!appearance.motion,hidden:document.hidden||viewMode!=='game'});
   if(tableMotion)motionTimer=setTimeout(render,tableMotion.remaining+1);
   if(!game&&viewMode==='game'){viewMode='menu';$('gameView').hidden=true;$('mainMenu').hidden=false;handDrag?.cancel();}
-  if(!game||viewMode!=='game')return;
+  if(!game||viewMode!=='game'){tableEffects.update(game,{active:false,motion:null});return;}
   const facts=tableFacts(game),boardClass=game.viewer<0?' spectator':'';
   const header=`<div class="game-top"><div><button class="pixel-button" id="pauseGame">☰ ${pick('菜单','Menu')}</button><span class="match-tag">${pick('第 ','Deal ')}${game.score?game.match.round:game.match.round+1}${pick(' 局','')} · ${pick('南北','S/N')} ${levelLabel(game.match.levels[0])} / ${pick('东西','E/W')} ${levelLabel(game.match.levels[1])}</span></div><div class="game-tools"><button class="quiet" id="bookButton">▤ ${pick('记牌簿','Notebook')}</button><button class="quiet" id="lessonButton" aria-pressed="${appearance.learning}">${appearance.learning?'✦':'◇'} ${pick('边玩边学','Learn')}</button></div></div>`;
   const flight=appearance.motion&&!motionPreference.matches&&!document.hidden&&!latest.paused&&hasLiveDealFlight(game,latest.dealClock,Date.now())?`<span class="deal-flight" data-key="draw-${game.dealt}" aria-hidden="true">${cardBack()}</span>`:'';
-  patchHtml($('gameArea'),`<div class="pixel-game${boardClass}" id="cardTable" data-live-style data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat,index)=>pixelSeat(game,index,typeName(seat),latest,tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${flight}${trickMarkup(game,tableMotion)}${!tableMotion?resultMarkup(game):''}${handPanel(game)}</div>`);
+  patchHtml($('gameArea'),`<div class="pixel-game${boardClass}" id="cardTable" data-live-style data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><div class="table-emblem" aria-hidden="true"><span>八 十 分</span><b>80</b><small>好牌 · 好搭档</small></div><div class="effects-layer" id="tableEffects" data-preserve aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat,index)=>pixelSeat(game,index,typeName(seat),latest,tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${flight}${trickMarkup(game,tableMotion)}${!tableMotion?resultMarkup(game):''}${handPanel(game)}</div>`);
 
   const ownTurn={bury:pick('轮到你扣底，请选八张牌。','Your burial. Choose eight cards.'),lead:pick('轮到你领出。','Your lead.'),follow:pick('轮到你跟牌。','Your turn to follow.'),declare:pick('可以亮主。','You may declare trump.'),rebel:pick('请选择是否重新发牌。','Choose whether to redeal.')}[game.pending?.phase];
   $('turnAnnouncement').textContent=tableMotion?seatLabel(game,tableMotion.trick.winner)+pick(' 收下本墩，',' took this trick, ')+tableMotion.trick.points+pick(' 分。',' points.'):game.pending?.seat===viewer?ownTurn||'':'';
@@ -334,6 +342,8 @@ function render(){
   if($('suggest'))$('suggest').onclick=()=>{const cards=game.pending.phase==='bury'?game.hand.slice(-8):game.pending.phase==='follow'?safeFollow(game.hand,classify(game.plays[0].cards,game.trump),game.trump,game.rules):[game.hand.at(-1)];selected=new Set(cards.map(card=>card.id));render();};
   document.querySelectorAll('[data-review-trick]').forEach(button=>button.onclick=()=>reviewTrick(Number(button.dataset.reviewTrick)));
   bindHand();updateClock();renderBook();renderTraining(game);
+  for(const bar of document.querySelectorAll('[data-score-progress]'))bar.style.transform=`scaleX(${Number(bar.dataset.scoreProgress)})`;
+  tableEffects.update(game,{active:!latest.paused&&!document.hidden&&!document.querySelector('dialog[open]'),motion:tableMotion});
   $('autoplay').hidden=viewer<0;$('autoplay').textContent=latest.autoplay.includes(viewer)?t('收回托管'):t('托管');
 }
 function updateClock(){document.querySelectorAll('[data-closing-at]').forEach(node=>{const remaining=latest?.paused?Number(node.dataset.closingRemaining):Number(node.dataset.closingAt)-Date.now();node.textContent=remaining>0?Math.ceil(remaining/1000)+t(' 秒'):t('正在定主…');});}
@@ -341,7 +351,7 @@ setInterval(updateClock,200);
 async function act(action,bidContext=null){
   if(submitting||!connected||action.type==='play'&&tableMotion)return;
   const game=latest.game,actor=viewer,envelope=bidContext?{seat:viewer,bidContext,action}:{decisionId:game.pending.id,version:game.version,seat:viewer,action};
-  submitting=true;render();try{await post('action',envelope);sound(action.type==='play'?'play':'card');selected.clear();const next=await fetch('/api/state?seat='+actor).then(response=>response.json());if(viewer===actor&&latest?.game?.id===game.id)receive(next);}catch(error){notify(error.message);}finally{submitting=false;render();}
+  submitting=true;render();try{await post('action',envelope);if(action.type==='bury')sound('bury');selected.clear();const next=await fetch('/api/state?seat='+actor).then(response=>response.json());if(viewer===actor&&latest?.game?.id===game.id)receive(next);}catch(error){notify(error.message);}finally{submitting=false;render();}
 }
 async function nextDeal(){try{quiz=null;quizKey=null;await post('next',{});await refreshState();}catch(error){notify(error.message);}}
 function reviewTrick(index){const game=latest.game,trick=game.tricks[index]||(index===game.tricks.length?{index,plays:game.plays}:null);if(!trick?.plays.length)return;$('trickContent').innerHTML=`<span class="eyebrow">${pick('第 ','TRICK ')}${index+1}${pick(' 墩','')}</span><h2>${trick.winner===undefined?pick('本墩进行中','Trick in progress'):escape(seatLabel(game,trick.winner))+pick(' 收下 · ',' wins · ')+trick.points}</h2>`+trick.plays.map((play,order)=>`<div class="trick-review"><span>${escape(seatLabel(game,play.seat))}<small>${order===0?t('领出'):t('跟牌')} · ${cardCount(play.cards.length)}</small></span><div>${play.cards.map(mini).join('')}</div></div>`).join('');$('trickDialog').showModal();}
@@ -398,13 +408,15 @@ function labels(){
     firstDealerRule:['首局随机选庄，庄家和搭档防守，另一队攻击。亮主只决定主花色；之后按上一局的结果轮换庄家。','The first dealer is random. The dealer and partner defend; the other team attacks. Declarations choose trump. Later dealers follow the preceding round result.'],
     settingsTitle:['通用设置','General settings'],settingsScope:['画面、手感与辅助偏好。新游戏的坐席和规则在入座时安排。','Appearance, interaction and accessibility. Seats and rules are arranged when starting a new game.'],
     appearanceTitle:['画面与可读性','Appearance & readability'],interactionTitle:['手感与辅助','Interaction & assistance'],handSizeLabel:['手牌大小','Hand card size'],tableSizeLabel:['桌面出牌大小','Table card size'],textSizeLabel:['文字大小','Text size'],textureLabel:['复古屏幕纹理','Retro screen texture'],
-    motionLabel:['动态效果','Animation'],motionHelp:['平滑抬牌、微微浮动和收牌动画。关闭后仍可正常看牌与操作；也尊重系统减少动态效果设置。','Smooth hover, gentle motion and trick collection. Turning animation off keeps every control usable. System reduced-motion is respected.'],
+    motionLabel:['动态效果','Animation'],motionHelp:['流动光影、牌面微光、出牌与收墩动画。关闭后保留静态画面和完整操作；也尊重系统减少动态效果设置。','Flowing ink, card glints, plays and trick collection. Turn off for a still table with every control intact. System reduced-motion is respected.'],
+    effectsLabel:['光影与特效','Light & effects'],effectsHelp:['华丽：流动背景、箔光与得分火花。柔和：轻量背景与简洁提示。关闭：静态牌桌。','Full: flowing ink, foil and scoring sparks. Soft: a lighter background and simple accents. Off: a static backdrop.'],
     dragPlayLabel:['拖动出牌','Drag to play'],dragPlayHelp:['拖动任一已选牌，会带起整组已选牌；拖动未选牌，只带起这一张。放到桌上即可合法出牌，不合法会整组滑回。关闭则拖动仅选牌；扣底始终按按钮确认。','Drag any selected card to carry the whole selection; an unselected card moves alone. A legal table drop plays the carried cards; an invalid drop returns them all. When off, dragging only selects. Burial always needs the button.'],
     hintsLabel:['操作提示','Control hints'],soundLabel:['牌桌音效','Table sounds'],volumeLabel:['音量','Volume'],resetPreferences:['恢复默认偏好','Reset preferences'],
     setupBack:['← 主菜单','← Main menu'],setupEyebrow:['NEW TABLE','NEW TABLE'],newGameTitle:['准备入座','Take your seats'],setupScope:['每一席都可以单独安排。南北一队、东西一队；首局随机选庄。','Configure each seat independently. South/North and East/West are partners. The first dealer is random.'],partnershipTitle:['隔桌是搭档','Your partner sits across'],partnershipHelp:['你和对家一起赢。庄家与搭档守庄，另外两人攻分；攻方拿到 80 分就能上台。','You win as a team. The dealer and partner defend; the other team attacks. Attackers take over at 80 points.']
   });
   for(const id of ['handSize','tableSize','textSize'])[...$(id).options].forEach((node,index)=>node.textContent=id==='textSize'?pick(['标准','大','更大'][index],['Standard','Large','Extra large'][index]):pick(['紧凑','标准','大'][index],['Compact','Standard','Large'][index]));
   for(const [id,values] of Object.entries(labels))text(id,...values);
+  [...$('effectQuality').options].forEach((node,index)=>node.textContent=pick(['华丽','柔和','关闭'][index],['Full','Soft','Off'][index]));
   $('menuTitle').innerHTML='<span class="sr-only">'+pick('八十分','EIGHTY')+'</span>'+wordmark(locale);
   for(const [id,zh,en] of [['mainMenu','主菜单','Main menu'],['settingsView','通用设置','General settings'],['newGameView','新游戏','New game'],['gameView','牌桌','Game table']])$(id).setAttribute('aria-label',pick(zh,en));
   document.querySelector('#mainMenu nav').setAttribute('aria-label',pick('游戏菜单','Game menu'));for(const [id,zh,en] of [['closeBook','合上记牌簿','Close notebook'],['closeLesson','关闭练习','Close lesson'],['closeCredits','关闭鸣谢','Close credits']])$(id).setAttribute('aria-label',pick(zh,en));
@@ -431,10 +443,12 @@ $('closeRestart').onclick=$('cancelRestart').onclick=()=>$('restartDialog').clos
 for(const [id,key] of Object.entries({fourColor:'fourColor',cardMotion:'motion',tableTexture:'texture',showHints:'hints',dragToPlay:'dragToPlay',tableSound:'sound'}))$(id).onchange=event=>{appearance[key]=event.target.checked;applyAppearance(true);};
 for(const id of ['handSize','tableSize','textSize'])$(id).onchange=event=>{appearance[id]=Number(event.target.value);applyAppearance(true);};
 $('soundVolume').oninput=event=>{appearance.volume=Number(event.target.value);applyAppearance(true);};
+$('effectQuality').onchange=event=>{appearance.effects=event.target.value;applyAppearance(true);tableEffects.clear();};
 $('resetPreferences').onclick=()=>{appearance={...DEFAULT_PREFERENCES};applyAppearance(true);};
 $('trainingToggle').onchange=event=>{appearance.learning=event.target.checked;quiz=null;quizKey=null;applyAppearance(true);if(appearance.learning)renderTraining(latest?.game);else $('training').innerHTML='';render();};
 for(const button of document.querySelectorAll('[data-book-tab]'))button.onclick=()=>{bookTab=button.dataset.bookTab;renderBook();};
 for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>handHover?.refresh());
+for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('toggle',()=>{if(dialog.open)tableEffects.update(latest?.game,{active:false,motion:tableMotion});});
 setupConnectionsDialog({state:()=>latest,post,refresh:refreshState,notify,onLinked:(index,profile,previous)=>{const seat=config.seats[index];if(seat?.kind!=='api'||(connectionFor(seat,latest?.connections||[])?.id||null)!==previous)return;seat.connectionId=profile.id;seat.provider=profile.provider;if(!profile.models.some(model=>model.id===seat.model))seat.model='';storeConfig();renderSetup();return true;}});
 enhanceDialogs();
 window.addEventListener('resize',layoutHand);
