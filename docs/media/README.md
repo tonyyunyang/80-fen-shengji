@@ -7,6 +7,7 @@ These files show **Eighty's current renderer and project artwork**. There are no
 | `menu-zh.png`, `menu-en.png` | Actual Chinese/English main-menu screenshots. |
 | `gameplay-zh.gif`, `gameplay-en.gif` | Real manual hover, pair selection, one-card drag, local-bot replies and trick animation. |
 | `group-drag.gif` | Select a pair, drag the first selected card, cancel and return, then drag the second selected card to play both. |
+| `arcade-table.png`, `arcade-gameplay.mp4` | The arcade finish on the real table: flowing ink, selected-tractor dragging, card landings and public trick/score effects. |
 | `cards.png` | A presentation of actual `card-art.js` / `card-glyphs.js` cards and the project atlas. |
 | `social-card.png` | 1200×630 sharing image using the real wordmark and card components. |
 | `../images/table.png` | Actual full-table screenshot. |
@@ -14,6 +15,8 @@ These files show **Eighty's current renderer and project artwork**. There are no
 The gameplay clips use an isolated, reproducible post-deal fixture with one human and three local practice bots. API allowance is zero. The clips are trimmed and encoded for documentation; a small cursor highlight is added to clarify pointer movement. Game actions, card motion and outcomes come from the actual game. The card sheet and social card are promotional compositions, not additional game interfaces.
 
 The group-drag follow-up is approximately eleven seconds at 20 fps; the original gameplay GIFs are twelve seconds at 15 fps. The GIF frame rate is an export choice, not the game's animation rate.
+
+The arcade screenshot and fifteen-second clip use the normal renderer with one human, local practice opponents and an offline simulated API partner, with paid allowance fixed at zero. The clip is trimmed from the checked browser recording and contains no audio. No gameplay or effects are composited into it.
 
 Project media is distributed under [Apache-2.0](../../LICENSE), with [NOTICE](../../NOTICE) and [credits](../credits.md). Link back to the repository when sharing. No official Balatro assets are included.
 
