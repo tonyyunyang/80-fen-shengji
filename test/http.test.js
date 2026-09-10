@@ -40,6 +40,7 @@ test('HTTP boundary, four-seat setup, private views and reload persistence', asy
     assert.equal((await send('/api/presence', { visible: true })).status, 400);
     assert.equal((await send('/api/start', {}, { origin: 'https://example.invalid' })).status, 403);
     assert.equal((await send('/api/start', {}, { 'x-eighty-csrf': 'wrong' })).status, 403);
+    assert.equal((await send('/api/start', {}, { 'x-eighty-csrf': 'é'.repeat(csrf.length) })).status, 403);
     assert.equal((await send('/api/start', { seats: [] })).status, 400);
     const seats = Array.from({ length: 4 }, (_, seat) => ({ kind: 'human', name: '玩家' + seat }));
     assert.equal((await send('/api/start', { seats })).status, 200);

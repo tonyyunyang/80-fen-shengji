@@ -17,7 +17,7 @@ export function cardFace(card) {
   }
   const corner=`<b class="rank-glyph">${cardGlyph(rankLabel(card.rank))}</b><span class="suit suit-glyph">${cardGlyph(card.suit)}</span>`;
   const art=card.rank>=11 && card.rank<=13 ? `<span class="illustration atlas-${courtIndex(card)}"></span>` :
-    `<span class="pips pips-${card.rank===14?1:card.rank}${card.rank===14?' ace':''}">${pips[card.rank===14?1:card.rank].map(([x,y])=>`<i class="pip${y>50?' flip':''}">${cardGlyph(card.suit)}</i>`).join('')}</span>`;
+    `<span class="pips pips-${card.rank===14?1:card.rank}${card.rank===14?' ace':''}">${pips[card.rank===14?1:card.rank].map(([,y])=>`<i class="pip${y>50?' flip':''}">${cardGlyph(card.suit)}</i>`).join('')}</span>`;
   return `<span class="corner top">${corner}</span>${art}<span class="corner bottom">${corner}</span>`;
 }
 export function cardBack() { return '<span class="card-back" aria-hidden="true"></span>'; }

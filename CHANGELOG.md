@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Reject stale browser snapshots from another viewing seat; scope counters to the server session so reconnecting can accept a restored save. Human play controls require ownership of the displayed hand.
+- Cancel a held group when viewport geometry changes, including a release that arrives before the resize event, without submitting cards or losing the selection.
+- Return HTTP 403 for malformed multi-byte CSRF headers without exposing an internal comparison error.
+- Consolidate bilingual interface labels, remove unused imports and retired card-preview styles, simplify the active layout path and format the client/CSS for maintenance. The approved artwork and hand interaction remain intact.
+- Use controlled clocks for cutoff and late-usage evaluation regressions instead of short wall-clock waits that depended on CI load.
+
 ## 0.3.0 · 2026-09-10 · Arcade table and group play
 
 - An arcade finish adds original flowing ink, foil glints, richer paper/brass surfaces, directional card landings and public declaration/trick accents.

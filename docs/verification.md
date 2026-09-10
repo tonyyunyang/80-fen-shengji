@@ -1,11 +1,11 @@
 # Verification
 
-Current packaged version: **0.3.0**, September 10, 2026: the pixel table with selected-group dragging and arcade effects. Live AI outcomes and their limits are separate in [the current study](research/ai-evaluation.md).
+Latest packaged release: **0.3.0**, September 10, 2026. Current development also includes the maintenance changes under [Unreleased](../CHANGELOG.md#unreleased). Live AI outcomes and their limits are separate in [the current study](research/ai-evaluation.md).
 
 ## Offline gates
 
-- `npm test`: **191 passing tests**.
-- `npm run check`: **91 modules** checked; preserved Peilian checksum verified.
+- `npm test`: **200 passing tests**.
+- `npm run check`: **94 modules** checked; preserved Peilian checksum verified.
 - Coverage retains deterministic rules, all physical card identities, legal following, private observations, cookie/CSRF isolation, provider deadlines and late accounting.
 - New checks cover one-row geometry through 25→33→25, perspective/partner placement, all twelve court images and both jokers, correct team result labels, completed-match levels, and a learning recap after all cards have been played.
 
@@ -83,3 +83,15 @@ The effects pass was checked on the real client with synthetic local saves and p
 - Nine offline effect-flow regressions cover public-event allowlisting, history suppression, scope changes, shared dealing counts, coalescing, collection timing, overlay/pause cleanup, authoritative result attribution and preference migration.
 
 The [curated gameplay preview](media/arcade-gameplay.mp4) is published with the release. Raw captures, fixture generators and reports stay in ignored `output/playwright/arcade-polish/`; release-media work stays in `output/playwright/release-0.3.0/`. In this browser, taking a screenshot during a held pointer gesture releases pointer capture; drag assertions therefore sample the frozen hand after pointer-down and use video for the uninterrupted gesture. The release correctly cancels the carried cards, and no production input behavior was altered for the capture tool.
+
+## Maintenance review · September 11, 2026
+
+- Snapshot regressions cover viewing-seat changes, normalized spectator views, stale revisions/versions, restored server sessions and HTTP requests begun before a viewer or session change. Human controls require ownership of the visible hand.
+- Malformed multi-byte CSRF headers return HTTP 403 in the session boundary and a real HTTP fixture. Valid tokens retain the same constant-time comparison and mutation budget.
+- Cutoff and late-usage evaluator tests advance a controlled clock after the request starts, avoiding the earlier dependence on 40/200 ms of runner wall time.
+- A viewport-change regression covers window size, visual viewport height and zoom before a resize event arrives. The browser workflow confirms that resizing a held pair returns it without submission or selection loss.
+- All 53 consolidated interface labels match the earlier values. Before/after browser comparisons found no layout/style/text differences across 97 menu elements, 777 table elements with 25 cards, and 1,071 burial-view elements with 33 cards.
+- Browser checks retain valid/invalid group dragging, all 33 hover targets, reduced motion, 390/560/1920-pixel windows, a complete human/practice/simulated-API deal and next deal, with zero paid requests and no page errors.
+- The maintenance static-analysis pass reports no unused variables, undefined names, unreachable code, duplicate object keys, constant binary-expression errors or invalid `typeof` comparisons in the 94 JavaScript modules. Formatting is limited to the client entry point, extracted label/state helpers and the two table stylesheets; source artwork, vendor code and AI strategy are preserved.
+
+Raw comparisons, browser reports and review notes remain under ignored `output/code-review/` and `output/playwright/code-cleanup/`.

@@ -17,6 +17,17 @@ const secret = 'fixture-key-that-is-not-a-credential';
 const profile = { name: 'Fixture gateway', provider: 'qwen', baseUrl: 'https://example.com/v1', models: [{ id: 'fixture-model', input: 1, output: 2 }] };
 const game = () => createGame({ seed: 21, seats: Array.from({ length: 4 }, () => ({ kind: 'peilian' })) });
 
+test('CSRF rejects malformed byte lengths with an authorization error', () => {
+  const context = { csrf: 'a'.repeat(64), mutations: [] };
+  const authorize = supplied => BrowserSessions.prototype.authorize(context, { headers: { 'x-eighty-csrf': supplied } });
+  for (const supplied of [undefined, ['a'.repeat(64)], 'b'.repeat(64), 'é'.repeat(64), 'é'.repeat(32)]) {
+    assert.throws(() => authorize(supplied), error => error.status === 403);
+  }
+  assert.deepEqual(context.mutations, [], 'rejected tokens never enter the authorized mutation budget');
+  authorize(context.csrf);
+  assert.equal(context.mutations.length, 1);
+});
+
 test('connections keep keys out of lists/checkpoints and require re-entry for a changed destination', () => {
   const a = new Connections(), b = new Connections();
   const id = a.save({ ...profile, key: secret });

@@ -38,23 +38,35 @@ test('hard pilot budget is shared across games and repairs', async () => {
   assert.equal(report.stopReason, 'request_guard');
   assert.equal(report.summary.pairs.length, 0);
 });
-test('wall cutoff rejects a provider that never cooperates with cancellation', async () => {
-  const start = Date.now();
-  const report = await runEvaluation({ live: true, env: { QWEN_API_KEY: 'fixture-only', QWEN_BASE_URL: 'https://example.invalid/v1' }, maxMs: 40,
-    call: () => new Promise(() => {}) });
+test('wall cutoff rejects a provider that never cooperates with cancellation', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let started;
+  const ready = new Promise(resolve => { started = resolve; });
+  const running = runEvaluation({ live: true, env: { QWEN_API_KEY: 'fixture-only', QWEN_BASE_URL: 'https://example.invalid/v1' }, maxMs: 40,
+    call: () => { started(); return new Promise(() => {}); } });
+  await ready;
+  t.mock.timers.tick(40);
+  const report = await running;
   assert.equal(report.stopReason, 'wall_time_guard');
-  assert.ok(Date.now() - start < 1000);
+  assert.equal(report.wallMs, 40);
   assert.equal(report.summary.pairs.length, 0);
 });
-test('a late response persists corrected usage without applying its action', async () => {
-  let finish, saved;
-  const report = await runEvaluation({ live: true, env: { QWEN_API_KEY: 'fixture-only', QWEN_BASE_URL: 'https://example.invalid/v1' }, maxMs: 200,
-    call: () => new Promise(resolve => { finish = resolve; }),
+test('a late response persists corrected usage without applying its action', async (t) => {
+  // Control both clocks so CI load cannot consume the budget while preparing
+  // the fixture or make unrelated attempts part of this single-response test.
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let finish, saved, started;
+  const ready = new Promise(resolve => { started = resolve; });
+  const running = runEvaluation({ live: true, env: { QWEN_API_KEY: 'fixture-only', QWEN_BASE_URL: 'https://example.invalid/v1' }, maxMs: 200,
+    call: () => new Promise(resolve => { finish = resolve; started(); }),
     onProgress: async report => { saved = structuredClone(report); } });
+  await ready;
+  t.mock.timers.tick(200);
+  const report = await running;
   assert.equal(report.requests.length, 1);
   const sources = structuredClone(report.games[0].sources);
   finish({ action: { type: 'play', cardIds: [] }, usage: { input: 11, output: 3, cached: 0, cacheWrite: 0 }, ms: 250 });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  for (let i = 0; i < 12; i++) await Promise.resolve();
   assert.equal(saved.lateUsage[0].applied, false);
   assert.equal(saved.games[0].stats.input, 11);
   assert.equal(saved.games[0].stats.usageUnknown, 0);

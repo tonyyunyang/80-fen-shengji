@@ -27,6 +27,7 @@ flowchart LR
 | `src/providers.js`, `src/*context.js`, `src/expert-*.js` | Permitted observations, structured action contracts and model guidance. |
 | `src/analysis-worker.js`, `src/endgame-estimates.js` | Bounded hypothetical endgames off the server event loop. |
 | `public/app.js`, `public/pixel-view.js` | Menu/setup flow, the current table and public state rendering. |
+| `public/client-state.js`, `public/ui-labels.js` | Viewer/session snapshot ordering, human-turn ownership and the single source of bilingual interface labels. |
 | `public/hand-*.js`, `public/table-*.js` | Stable hover, group drag, selection, layout, animation timing and sound. |
 | `public/atmosphere.js`, `public/effect-flow.js`, `public/effects.css` | Bounded procedural background and decorative responses to public events. No engine actions or provider work. |
 | `public/card-art.js`, `public/card-glyphs.js`, `public/wordmark.js` | The actual deck and original drawn lettering. |
@@ -37,6 +38,8 @@ flowchart LR
 The browser sends a decision-bound action, not a replacement game state. The engine validates ownership, count, suit and structure before mutation. Public views redact hidden information; each API seat gets its own observation.
 
 The server owns one controller per browser session. Cookies and CSRF checks prevent another browser from operating that controller. A changed game generation rejects late model actions while retaining auditable usage. See [the player protocol](player-protocol.md) and [session security](security-and-deployment.md).
+
+The client rejects responses for another viewing seat and stale counters within the same server session. A changed CSRF token identifies a fresh server session, whose restored game may legitimately have lower counters. Bot seats retain the server's spectator projection and never gain human play controls.
 
 ## Rendering and time
 
