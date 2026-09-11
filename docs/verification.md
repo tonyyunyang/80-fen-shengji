@@ -4,8 +4,8 @@ Latest packaged release: **0.3.0**, September 10, 2026. Current development also
 
 ## Offline gates
 
-- `npm test`: **200 passing tests**.
-- `npm run check`: **94 modules** checked; preserved Peilian checksum verified.
+- `npm test`: **203 passing tests**.
+- `npm run check`: **96 modules** checked; preserved Peilian checksum verified.
 - Coverage retains deterministic rules, all physical card identities, legal following, private observations, cookie/CSRF isolation, provider deadlines and late accounting.
 - New checks cover one-row geometry through 25→33→25, perspective/partner placement, all twelve court images and both jokers, correct team result labels, completed-match levels, and a learning recap after all cards have been played.
 
@@ -95,3 +95,12 @@ The [curated gameplay preview](media/arcade-gameplay.mp4) is published with the 
 - The maintenance static-analysis pass reports no unused variables, undefined names, unreachable code, duplicate object keys, constant binary-expression errors or invalid `typeof` comparisons in the 94 JavaScript modules. Formatting is limited to the client entry point, extracted label/state helpers and the two table stylesheets; source artwork, vendor code and AI strategy are preserved.
 
 Raw comparisons, browser reports and review notes remain under ignored `output/code-review/` and `output/playwright/code-cleanup/`.
+
+## Seat relationships · September 11, 2026
+
+- Setup groups You and Teammate, then Left opponent and Right opponent. Offline regressions verify all four human perspectives against the table renderer, preserve original configuration indices, and cover multiple humans and spectator teams.
+- Browser checks assign three distinct connections and model IDs through the corresponding relationship rows. Saving returns focus to the originating model picker, and all assignments survive reload without moving between seats. No key or remote model request is used.
+- Chinese and English setup layouts fit 390, 560 and 1440 pixel widths. The seat diagram, accessible names and connection hints agree with the displayed relationships; presets, initial start and confirmed new game preserve the intended seat assignments. Console and page-error collectors report no errors.
+- A human manually submits an exact pair at a mixed practice/simulated-API table. A mixed deal finishes, and Next deal preserves all four seat configurations with zero paid requests.
+
+The [setup capture](media/seat-setup-zh.png) shows the real Chinese client. Raw screenshots and browser reports remain under ignored `output/playwright/seat-relationships/`.

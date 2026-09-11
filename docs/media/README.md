@@ -9,6 +9,7 @@ The current media show **Eighty 0.3.0's arcade renderer and project artwork**. E
 | `arcade-gameplay.mp4`, `arcade-gameplay-en.mp4` | Clearer Chinese/English video versions of the arcade gameplay. |
 | `arcade-table.png` | Actual full-table screenshot with the arcade finish. |
 | `cards.png` | A presentation of actual `card-art.js` / `card-glyphs.js` cards and the project atlas. |
+| `seat-setup-zh.png` | September 11 development update: relationship-based New game setup, captured from the real Chinese client with default local practice seats. |
 
 The arcade clips use an isolated, reproducible post-deal fixture with one human, local practice opponents and an offline simulated API partner. Paid API allowance is zero. Clips are trimmed and encoded for documentation; actions, card motion, effects and outcomes come from the actual game. They contain no audio and no composited gameplay. The card sheet is a promotional composition, not another game interface.
 

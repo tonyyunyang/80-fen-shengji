@@ -10,6 +10,8 @@ The dealer's partnership defends. The other team attacks. **Attackers take over 
 
 Choose **New game**. Assign each seat to a human, local practice bot or your own API model. The default is you and three free practice bots. The first dealer is random. Seats and rules are configured here; card/text sizes, colors and motion live in the main menu's **Settings**.
 
+The list groups **You** and **Teammate** first, then **Left opponent** and **Right opponent**. You sit at the bottom and your teammate sits across. The seat diagram, model pickers and connection hints use the same relationship names.
+
 Multiple humans can share one device, with a privacy curtain between hands. This is not a networked room. With no human seats, you can watch the game.
 
 ## A deal, in order

@@ -328,7 +328,7 @@ button:hover:not(:disabled) {
 }
 .seat-form {
   display: grid;
-  grid-template-columns: 44px 1fr;
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: start;
   gap: 12px;
   padding: 18px 0;
@@ -357,6 +357,16 @@ button:hover:not(:disabled) {
   color: #d1d2c0;
   font-size: 12px;
   margin: 0 0 6px;
+}
+.seat-form .setup-seat-heading {
+  color: var(--paper);
+  font-size: 16px;
+  font-weight: 700;
+}
+.setup-seat-position {
+  margin: 0 0 10px;
+  color: #d1d2c0;
+  font-size: 12px;
 }
 .provider-options {
   max-width: 100%;
@@ -2064,19 +2074,22 @@ body {
 }
 .setup-compass {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 40px 40px 40px;
+  grid-template-columns: 1fr 24px 1fr;
+  gap: 12px 8px;
   place-items: center;
   margin: 22px auto;
-  width: 180px;
+  width: min(100%, 300px);
 }
 .setup-compass span {
-  padding: 7px 14px;
+  padding: 9px 10px;
   border: 2px solid #80967b;
   background: #355b4e;
+  font-size: 13px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .compass-north {
-  grid-area: 1/2;
+  grid-area: 1/1/2/4;
 }
 .compass-west {
   grid-area: 2/1;
@@ -2090,7 +2103,7 @@ body {
   grid-area: 2/3;
 }
 .compass-south {
-  grid-area: 3/2;
+  grid-area: 3/1/4/4;
 }
 .setup-compass .compass-east,
 .setup-compass .compass-west {

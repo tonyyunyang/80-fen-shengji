@@ -16,6 +16,8 @@ Each API seat has an inline Add or Manage connection button, including a clear e
 
 New game opens a separate seat and table setup, initialized from the saved draft. General Settings offers hand size, table-card size, text size, suit palette, motion, texture, Full/Soft/Off light and effects, hints, drag-to-play and optional synthesized sound/volume. Starting another game while one exists requires confirmation and resets levels to 2; it uses the draft seat/rule settings. Next deal preserves the current table's seats, rules and match progression. Settings do not silently alter that existing table.
 
+Seat setup groups You and Teammate (across), then Left opponent (上家) and Right opponent (下家), matching the initial human's table perspective. The diagram, menu summary, accessible control names and per-seat connection hints share that mapping. Display order never changes saved seat indices or model assignments. Multiple humans use the first human's perspective; spectator setup shows two teams with their positions instead of claiming a human seat.
+
 Seats, provider connections, model choices, prompt language, optional endgame analysis, rule options, request/output/deadline limits, suit colors and card motion are configured outside the game. In-game controls are Menu/Pause, Notebook, Learn, card selection and confirmation. Pause offers Resume, Rules, Autoplay and Main menu. Changing credentials retains the existing server-side pause/cancellation behavior.
 
 ## One hand row

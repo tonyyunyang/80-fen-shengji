@@ -10,6 +10,7 @@ import { decisionTimeoutMs, MAX_DECISION_MS } from '/src/player-settings.js';
 import { DEFAULT_PREFERENCES, readPreferences } from './preferences.js';
 import { createTableSound } from './table-sound.js';
 import { UI_LABELS } from './ui-labels.js';
+import { setupSeatRows } from './seat-setup.js';
 import { acceptSnapshot, isHumanTurn } from './client-state.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createTableEffects } from './table-effects.js';
@@ -172,32 +173,55 @@ function option(value, label, current, disabled = false) {
 }
 function renderSetup() {
   $('apiConnectionCount').textContent = latest?.connections?.length ? String(latest.connections.length) : '';
+  const rows = setupSeatRows(config.seats);
+  const humanCount = config.seats.filter((seat) => seat.kind === 'human').length;
+  for (const row of rows) {
+    const node = document.querySelector('.compass-' + row.position);
+    node.textContent = row.label;
+    node.title = row.hint;
+  }
+  $('setupPerspective').textContent = humanCount
+    ? (humanCount > 1 ? pick('以第一位真人的视角安排。', 'Shown from the first human’s view. ') : '') +
+      pick(
+        '你在下方，队友在对面；左侧是上家对手，右侧是下家对手。',
+        'You sit at the bottom, your teammate across, and opponents to your left and right.',
+      )
+    : pick(
+        '观战模式：上下两家一队，左右两家一队。',
+        'Spectator view: top and bottom are partners; left and right form the other team.',
+      );
   const opened = [...$('setup').querySelectorAll('details[open]')].map((node) => node.id),
     focus = document.activeElement?.id;
   $('setup').innerHTML =
-    config.seats
-      .map(
-        (seat, index) =>
+    rows
+      .map(({ index, team, marker, label, hint }) => {
+        const seat = config.seats[index];
+        return (
           '<div class="seat-form"><div class="seat-letter team-' +
-          (index % 2) +
-          '">' +
-          directions[index] +
-          '</div><div><label for="kind-' +
+          team +
+          '" aria-hidden="true">' +
+          marker +
+          '</div><div><label class="setup-seat-heading" for="kind-' +
           index +
           '">' +
-          (index % 2 ? t('东西搭档') : t('南北搭档')) +
-          '</label><select id="kind-' +
+          escape(label) +
+          '</label><p class="setup-seat-position" id="position-' +
           index +
-          '" aria-label="' +
-          directions[index] +
-          t('家玩家类型">') +
+          '">' +
+          escape(hint) +
+          '</p><select id="kind-' +
+          index +
+          '" aria-describedby="position-' +
+          index +
+          '">' +
           option('human', t('人类玩家'), seat.kind) +
           option('peilian', t('陪练 · 本地策略'), seat.kind) +
           option('api', t('API 模型'), seat.kind) +
           '</select></div>' +
-          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || []) : '') +
-          '</div>',
-      )
+          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || [], label + ' · ' + hint) : '') +
+          '</div>'
+        );
+      })
       .join('') +
     t(
       '<div class="presets"><button class="preset" id="apiPreset">一人 · 三 API</button><button class="preset" id="practicePreset">一人 · 三陪练</button><button class="preset" id="mixedPreset">两席离线模拟</button><button class="preset" id="watchPreset">四席观战</button></div>',
@@ -444,8 +468,13 @@ function renderMenu() {
   text('menuStart', '新游戏', 'New game');
   $('continueGame').hidden = !game;
   text('continueGame', game?.score ? '查看本局结果' : '继续游戏', game?.score ? 'View round result' : 'Continue');
-  $('menuSummary').textContent = config.seats
-    .map((seat, index) => directions[index] + ' · ' + typeName(seat))
+  $('menuSummary').textContent = setupSeatRows(config.seats)
+    .map(
+      ({ index, label, hint }) =>
+        (config.seats.some((seat) => seat.kind === 'human') ? label : label + ' · ' + hint) +
+        ' · ' +
+        typeName(config.seats[index]),
+    )
     .join('  /  ');
   $('resumeSummary').textContent = game
     ? pick('已保留当前对局，可继续或另开一桌。', 'Your current game is saved. Continue it or start a new table.')
@@ -1452,9 +1481,6 @@ function labels() {
     ['closeCredits', '关闭鸣谢', 'Close credits'],
   ])
     $(id).setAttribute('aria-label', pick(zh, en));
-  document
-    .querySelectorAll('.setup-compass span')
-    .forEach((node, index) => (node.textContent = pick(['北', '西', '东', '南'][index], ['N', 'W', 'E', 'S'][index])));
   text('galleryButton', '查看整副牌面', 'Card gallery');
   text('galleryTitle', '整副牌面', 'Card gallery');
   text('settingsUsage', '用量记录', 'Usage records');
@@ -1601,6 +1627,10 @@ for (const dialog of document.querySelectorAll('dialog'))
   });
 setupConnectionsDialog({
   state: () => latest,
+  seatLabel: (index) => {
+    const row = setupSeatRows(config.seats).find((row) => row.index === index);
+    return row.label + ' · ' + row.hint;
+  },
   post,
   refresh: refreshState,
   notify,

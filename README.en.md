@@ -68,7 +68,7 @@ npm start
 
 Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)**, choose **New game**, arrange the seats, and play.
 
-The default is you and three local practice bots. Appearance preferences live in **Settings**; seats and table rules live in **New game**. The menu supports Chinese and English.
+The default is you and three local practice bots. Setup lists **You, Teammate, Left opponent and Right opponent**, with their table positions, so each assignment is easy to locate. Appearance preferences live in **Settings**; seats and table rules live in **New game**. The menu supports Chinese and English.
 
 For a quieter table, set **Light & effects** to **Soft** or **Off**, or turn off **Animation**. System reduced motion is respected. Sound is off by default and has its own volume control.
 
