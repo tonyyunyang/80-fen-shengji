@@ -84,8 +84,8 @@ export const UI_LABELS = Object.freeze({
   setupEyebrow: ['NEW TABLE', 'NEW TABLE'],
   newGameTitle: ['准备入座', 'Take your seats'],
   setupScope: [
-    '每一席都可以单独安排。南北一队、东西一队；首局随机选庄。',
-    'Configure each seat independently. South/North and East/West are partners. The first dealer is random.',
+    '先安排你和队友，再安排两位对手。每席可选真人、陪练或 API 模型；首局随机选庄。',
+    'Set up your team, then the two opponents. Each seat can be human, a practice bot or an API model. The first dealer is random.',
   ],
   partnershipTitle: ['隔桌是搭档', 'Your partner sits across'],
   partnershipHelp: [

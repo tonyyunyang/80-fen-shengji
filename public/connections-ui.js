@@ -5,14 +5,14 @@ const option=(id,label,selected)=>`<option value="${escape(id)}"${id===selected?
 export const connectionFor=(seat,profiles=[])=>profiles.find(p=>p.id===(seat.connectionId||({qwen:'alibaba',openai:'openai',claude:'anthropic'})[seat.provider]));
 const rate=value=>value==null?'—':'$'+Number(value).toLocaleString('en-US',{maximumSignificantDigits:6});
 const price=model=>model.input!=null||model.output!=null?rate(model.input)+' / '+rate(model.output):null;
-export function apiSeatFields(seat,index,profiles){
+export function apiSeatFields(seat,index,profiles,seatLabel){
   const profile=connectionFor(seat,profiles),current=seat.provider==='mock'?'mock':profile?.id;
-  return `<div class="provider-options"><label for="provider-${index}">${pick('API 连接','API connection')}</label><select id="provider-${index}" aria-label="${pick('座位 ','Seat ')+index} API">`+
+  return `<div class="provider-options"><label for="provider-${index}">${pick('API 连接','API connection')}</label><select id="provider-${index}" aria-label="${escape(seatLabel)} · ${pick('API 连接','API connection')}">`+
     (!current?`<option value="" selected disabled>${profiles.length?pick('选择一个连接','Choose a connection'):pick('尚未添加连接','No connection yet')}</option>`:'')+
     profiles.map(p=>option(p.id,p.name+(p.active?pick(' · 已启用',' · enabled'):pick(' · 需要 key',' · needs a key')),current)).join('')+
     option('mock',pick('离线模拟 · 不调用模型','Offline simulation · no model'),current)+'</select>'+
     (seat.provider==='mock'?'':`<div class="seat-connection-route"><button class="secondary" type="button" data-manage-connection="${escape(profile?.id||'')}" data-api-seat="${index}">${profile?profile.active?pick('管理这条连接','Manage this connection'):pick('启用 / 管理连接','Enable / manage connection'):pick('＋ 添加 API 连接','＋ Add API connection')} ↗</button><small>${profile?profile.active?pick('需要更换服务或 key，可直接在这里管理。','Manage this service or its key here.'):pick('在这里填入 key 并读取模型，完成后回到这一席。','Enter a key and read models here, then return to this seat.'):pick('点击这里添加，也可使用右侧「API 连接」。','Add it here, or use API connections in the side panel.')}</small></div>`)+
-    (seat.provider==='mock'?'':`<label class="model-label" for="model-${index}">${pick('模型','Model')}</label><select id="model-${index}" aria-label="${pick('座位 ','Seat ')+index} ${pick('模型','model')}">`+
+    (seat.provider==='mock'?'':`<label class="model-label" for="model-${index}">${pick('模型','Model')}</label><select id="model-${index}" aria-label="${escape(seatLabel)} · ${pick('模型','Model')}">`+
       (!profile?.models.some(m=>m.id===seat.model)?`<option value="" disabled selected>${pick('连接后选择模型','Connect, then choose a model')}</option>`:'')+
       (profile?.models||[]).map(m=>option(m.id,m.label+(price(m)?' · '+price(m):''),seat.model)).join('')+'</select>'+
       `<small class="connection-note">${profile?.active?pick('模型只看自己的手牌与公开牌桌。','The model sees its own hand and the public table.'):pick('未启用时由陪练代打，零 API 请求。','Inactive connections use a practice bot, with no API requests.')}</small>`+
@@ -20,7 +20,7 @@ export function apiSeatFields(seat,index,profiles){
       `<small class="connection-note">${price(profile?.models.find(m=>m.id===seat.model)||{})?pick('USD / 百万 tokens 参考价；— 表示未提供。','Reference USD / million token prices; — means unspecified.'):pick('提供商未返回价格。','The provider has not supplied a price.')}</small>`+
       `<details class="seat-ai-options" id="ai-options-${index}"><summary>${pick('AI 策略选项','AI strategy options')}</summary><label class="option-row" for="prompt-language-${index}">${pick('策略提示词语言','Strategy prompt language')}<select id="prompt-language-${index}">${option('zh','中文',seat.promptLanguage||'zh')}${option('en','English',seat.promptLanguage||'zh')}</select></label><label class="option-row" for="endgame-${index}">${pick('残局推演 · 实验','Endgame analysis · experimental')}<input type="checkbox" id="endgame-${index}"${seat.endgameAnalysis!==false?' checked':''}></label><small class="connection-note">${pick('最后十二张内，结合公开牌史比较可能的残局。不会额外请求模型；只是估计，不保证胜率，可以关闭。','With twelve cards or fewer, compare possible endings consistent with public play. Adds no model round trips; estimates are uncertain and can be disabled.')}</small><small class="connection-note">${pick('模型根据本席手牌、公开记牌和搭档关系独立决策，目标是本方赢牌。中英文提供相同信息；回复只含出牌动作。超时或无效动作仍由陪练接手。','The model independently chooses for the team using its own hand, public card memory and partnership roles. Both languages supply the same information; replies contain only the action. Timeouts or invalid actions still fall back to the practice bot.')}</small></details>`)+ '</div>';
 }
-export function setupConnectionsDialog({state,post,refresh,notify,onLinked=()=>{}}){
+export function setupConnectionsDialog({state,seatLabel,post,refresh,notify,onLinked=()=>{}}){
   const $=id=>document.getElementById(id);let editing=null,catalog=new Map(),busy=false,sourceSeat=null,sourceConnection=null;
   const tell=message=>{$('connectionStatus').textContent=message;};
   const labels={connectionTitle:['连接你的模型','Connect your model'],connectionPrivacy:['key 仅保存在本浏览器会话的服务端内存。不会写入网页存储或牌谱；重启服务或会话空闲过期后清除。','Keys stay in server memory for this browser session. They never enter browser storage or replays and clear on server restart or session expiry.'],newConnection:['＋ 添加连接','＋ Add connection'],forgetAllKeys:['清除所有 key','Clear all keys'],protocolLabel:['接口协议','Protocol'],baseUrlLabel:['API 基础地址','Base URL'],baseUrlHelp:['填写基础地址，不带 /chat/completions 或 /messages。更换地址后需要重新输入 key。','Use the base URL, without /chat/completions or /messages. A changed address needs its own key.'],keyLabel:['API key','API key'],discoverModels:['连接并读取模型','Connect & read models'],discoveryHelp:['读取服务的 /models 列表，不发起对话。没有列表接口时，可以手动填写模型 ID。','Reads the service’s /models list without generating a response. If unavailable, enter model IDs manually.'],connectionNameLabel:['连接名称','Connection name'],modelListLabel:['可用模型','Available models'],modelListHelp:['读取后自动填入，每行一个模型 ID；可编辑。列表不代表模型一定支持本游戏的工具调用。价格仅在接口明确返回时显示。','Populated automatically; one editable model ID per line. Being listed does not verify game tool support. Prices appear only when explicitly supplied.'],saveConnection:['保存连接','Save connection'],forgetConnection:['清除此 key','Clear this key'],deleteConnection:['删除连接','Delete connection']};
@@ -43,7 +43,7 @@ export function setupConnectionsDialog({state,post,refresh,notify,onLinked=()=>{
   function open(id,seat=null){
     if(!busy){sourceSeat=seat;sourceConnection=id||null;edit(id===undefined?state()?.connections?.[0]?.id||null:id);}
     $('connectionSeatHint').hidden=sourceSeat===null;
-    $('connectionSeatHint').textContent=sourceSeat===null?'':pick('正在为'+['南','东','北','西'][sourceSeat]+'家配置。保存后，回到这一席选择模型。','Configuring '+['South','East','North','West'][sourceSeat]+'. After saving, choose a model for this seat.');
+    $('connectionSeatHint').textContent=sourceSeat===null?'':pick('正在为「'+seatLabel(sourceSeat)+'」配置。保存后，回到这一席选择模型。','Configuring '+seatLabel(sourceSeat)+'. After saving, choose a model for this seat.');
     if(!$('connectionsDialog').open)$('connectionsDialog').showModal();
   }
   function input(){

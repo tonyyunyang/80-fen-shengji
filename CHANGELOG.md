@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Identify setup seats as You, Teammate, Left opponent and Right opponent, grouped by partnership with table positions. Keep the seat diagram, menu summary and API connection hints consistent, including shared-device and spectator setups.
 - Reject stale browser snapshots from another viewing seat; scope counters to the server session so reconnecting can accept a restored save. Human play controls require ownership of the displayed hand.
 - Cancel a held group when viewport geometry changes, including a release that arrives before the resize event, without submitting cards or losing the selection.
 - Return HTTP 403 for malformed multi-byte CSRF headers without exposing an internal comparison error.
