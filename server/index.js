@@ -2,6 +2,8 @@ import http from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { BrowserSessions } from './browser-sessions.js';
+import { siteEdition, matchingSecret } from './site-edition.js';
+import { browserOriginAllowed } from './request-origin.js';
 const root = resolve(import.meta.dirname, '..');
 // Web tables are BYOK. CLI evaluators may load .env, but the web process must
 // neither load that credential file nor retain deployment provider keys.
@@ -9,10 +11,12 @@ for (const name of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'QWEN_API_KEY', 'KIMI
 const dataDirectory = resolve(root, process.env.EIGHTY_DATA_DIR || 'data');
 await mkdir(dataDirectory, { recursive: true });
 const publicOrigin = process.env.EIGHTY_PUBLIC_ORIGIN || '';
+const edition = siteEdition(process.env);
 if (publicOrigin && (new URL(publicOrigin).protocol !== 'https:' || new URL(publicOrigin).origin !== publicOrigin)) throw new Error('EIGHTY_PUBLIC_ORIGIN must be an HTTPS origin without a trailing slash');
 const bindHost = process.env.HOST || '127.0.0.1';
 if (!publicOrigin && !['127.0.0.1', 'localhost'].includes(bindHost)) throw new Error('Public listening requires EIGHTY_PUBLIC_ORIGIN and an HTTPS proxy');
 const sessions = new BrowserSessions({ directory: join(dataDirectory, 'browser-sessions'), hosted: !!publicOrigin,
+  connectionFactory: edition?.connectionFactory, edition: edition?.public, checkpoints: edition?.checkpoints,
   allowLoopback: process.env.EIGHTY_ALLOW_LOCAL_PROVIDERS === '1',
   capacity: Math.max(1, Math.min(256, Number(process.env.EIGHTY_MAX_SESSIONS) || 32)) });
 let legacy = null;
@@ -26,10 +30,14 @@ const body = async (req) => {
 };
 const server = http.createServer(async (req, res) => {
   try {
+    // The website container accepts traffic only from its own Worker. The
+    // Worker replaces, rather than trusts, client-supplied identity headers.
+    if (edition?.secret && !matchingSecret(req.headers['x-eighty-gateway'], edition.secret)) return json(res, 403, { error: 'Gateway rejected' });
     const host = req.headers.host || '';
     if (publicOrigin ? host !== new URL(publicOrigin).host : !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) return json(res, 403, { error: 'Host rejected' });
-    if (req.headers['sec-fetch-site'] === 'cross-site' || req.headers.origin && req.headers.origin !== (publicOrigin || 'http://' + host)) return json(res, 403, { error: 'Origin rejected' });
     const url = new URL(req.url, 'http://' + host);
+    if (!browserOriginAllowed({ method: req.method, pathname: url.pathname, origin: req.headers.origin, expectedOrigin: publicOrigin || 'http://' + host,
+      site: req.headers['sec-fetch-site'], mode: req.headers['sec-fetch-mode'], destination: req.headers['sec-fetch-dest'] }, !!edition)) return json(res, 403, { error: 'Origin rejected' });
     if (url.pathname === '/api/health' && req.method === 'GET') return json(res, 200, { ready: true });
     const api = url.pathname.startsWith('/api/');
     const context = api ? await sessions.get(req, res, req.method === 'GET' && url.pathname === '/api/state') : null;

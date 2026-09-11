@@ -2,6 +2,10 @@
   <a href="README.en.md">English</a> · 简体中文
 </p>
 
+> **个人网站定制分支：** `codex/tonytheyang-site` 负责 Tony 网站上的 Eighty
+> 部署与可选赞助 AI，继续在本仓库维护。[部署与版本管理说明](docs/site-edition.md)。
+> 当前配置默认关闭付费模型；创建这些文件并不代表在线服务已经发布。
+
 ![八十分 · Eighty 0.3 — 流动光影与像素牌桌](docs/media/arcade-menu-zh.png)
 
 <h1 align="center">八十分 · Eighty</h1>

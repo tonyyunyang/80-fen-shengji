@@ -2,6 +2,11 @@
   English · <a href="README.md">简体中文</a>
 </p>
 
+> **Website edition:** `codex/tonytheyang-site` maintains Tony's hosted Eighty
+> deployment and optional sponsored AI in this repository.
+> [Hosting and version ownership](docs/site-edition.md). Sponsorship is off
+> by default; these deployment files do not mean a live service has been published.
+
 ![Eighty 0.3 — Flowing ink and a pixel card table](docs/media/arcade-menu-en.png)
 
 <h1 align="center">Eighty · 八十分</h1>

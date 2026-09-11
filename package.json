@@ -11,7 +11,9 @@
     "test": "node --test test/*.test.js",
     "check": "node scripts/check.mjs",
     "import:peilian": "node scripts/import-peilian.mjs",
-    "media:preview": "node scripts/media-preview.mjs"
+    "media:preview": "node scripts/media-preview.mjs",
+    "test:site-worker": "node scripts/verify-site-worker.mjs",
+    "deploy:check": "wrangler deploy --dry-run"
   },
   "dependencies": {
     "ipaddr.js": "2.5.0"
@@ -25,5 +27,9 @@
   "homepage": "https://github.com/tonyyunyang/80-fen-shengji#readme",
   "bugs": {
     "url": "https://github.com/tonyyunyang/80-fen-shengji/issues"
+  },
+  "devDependencies": {
+    "@cloudflare/containers": "0.3.7",
+    "wrangler": "4.131.1"
   }
 }

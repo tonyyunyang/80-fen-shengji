@@ -15,3 +15,13 @@ Read README.md and CONTRIBUTING.en.md first, then the relevant document from doc
 - Update behavior, documentation and relevant regression examples together. Browser checks cover manual play, mixed seats, restart/next, narrow screens and a clean console; captures belong in ignored output/playwright/.
 - Use focused feature branches and reviewable commits. Scan the complete publication history for secrets; don't publish local runtime data or private planning notes. Follow the repository's PR checks before merging.
 - Keep feature branches only while work is active. After confirming a PR merge and checking for newer unmerged work, delete its remote and local branch and prune stale remote references. Preserve `main` and release tags.
+
+## Website edition exception
+
+Tony explicitly requested `codex/tonytheyang-site` as a maintained, long-lived
+deployment branch for his personal website. Preserve this branch. Keep game
+and hosted-service changes in this repository; the website owns its project
+entry and promotional artwork, not a second game copy. Read
+`docs/site-edition.md` for the deployment contract. Sponsored API use is an
+explicit host feature, disabled by default; ordinary upstream web sessions
+remain BYOK. Never infer authorization for paid requests from saved secrets.

@@ -73,6 +73,7 @@ let config = {
   speed: 600,
 };
 let appearance = { ...DEFAULT_PREFERENCES };
+let hasSavedSetup = false;
 const sound = createTableSound(() => appearance);
 try {
   const stored = JSON.parse(localStorage.getItem('eighty-config'));
@@ -80,7 +81,7 @@ try {
     stored?.seats?.length === 4 &&
     stored.seats.every((seat) => seat && ['human', 'api', 'peilian'].includes(seat.kind))
   )
-    config = { ...config, ...stored };
+    { config = { ...config, ...stored }; hasSavedSetup = true; }
   const options = JSON.parse(localStorage.getItem('eighty-pixel-options'));
   appearance = readPreferences(options);
 } catch {}
@@ -361,10 +362,11 @@ function renderSetup() {
     storeConfig();
   };
   $('apiPreset').onclick = () => {
-    const profile = latest?.connections?.[0];
+    const profile = latest?.connections?.find(p => p.sponsored && p.default) || latest?.connections?.[0];
     config.seats = defaultSeats().map((seat, index) =>
       index
-        ? { ...seat, kind: 'api', provider: profile?.provider || 'qwen', connectionId: profile?.id, model: '' }
+        ? { ...seat, kind: 'api', provider: profile?.provider || 'qwen', connectionId: profile?.id,
+            model: profile?.sponsored ? profile.models[0].id : '', ...(profile?.sponsored ? { endgameAnalysis: false } : {}) }
         : seat,
     );
     storeConfig();
@@ -480,7 +482,7 @@ function renderMenu() {
     ? pick('已保留当前对局，可继续或另开一桌。', 'Your current game is saved. Continue it or start a new table.')
     : pick('点击新游戏，安排四个座位，一起上桌。', 'Choose New game, arrange four seats, and take your place.');
   $('connectionLabel').textContent = connected
-    ? pick('● 本地牌桌已连接', '● Local table connected')
+    ? (latest?.siteEdition ? pick('● 牌桌已连接', '● Table connected') : pick('● 本地牌桌已连接', '● Local table connected'))
     : pick('○ 正在连接牌桌…', '○ Connecting to the table…');
 }
 async function startMatch(confirmed = false) {
@@ -1727,6 +1729,18 @@ try {
   status = initial.providers;
   latest = initial;
   csrfToken = initial.csrf || '';
+  // A retired host model must not leave a returning visitor stuck in setup.
+  // Personal API choices keep their existing explicit configuration flow.
+  config.seats = config.seats.map(seat => seat.kind === 'api' && seat.connectionId?.startsWith('sponsored-') &&
+    !initial.connections?.some(p => p.id === seat.connectionId && p.active && p.models.some(m => m.id === seat.model))
+    ? { ...seat, kind: 'peilian', provider: 'mock', connectionId: undefined, model: '' } : seat);
+  const hostedDefault = initial.connections?.find(p => p.sponsored && p.default && p.active);
+  if (!hasSavedSetup && !initial.game && hostedDefault) {
+    config.seats = defaultSeats().map((seat, index) => index ? {
+      ...seat, kind: 'api', provider: hostedDefault.provider, connectionId: hostedDefault.id,
+      model: hostedDefault.models[0].id, endgameAnalysis: false,
+    } : seat);
+  }
   if (config.setupDefaultsVersion < setupDefaultsVersion) {
     config.seats = config.seats.map((seat) =>
       seat.kind === 'api' && seat.provider !== 'mock' && !connectionFor(seat, initial.connections || [])

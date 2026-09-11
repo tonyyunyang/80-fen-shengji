@@ -12,7 +12,7 @@ async function files(directory) {
   return result;
 }
 let count = 0;
-for (const directory of ['src', 'server', 'public', 'scripts', 'test']) {
+for (const directory of ['src', 'server', 'public', 'scripts', 'test', 'cloudflare']) {
   for (const file of await files(root + '/' + directory)) {
     if (!/\.(mjs|js)$/.test(file)) continue;
     const check = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });

@@ -9,12 +9,14 @@ const token = () => randomBytes(32).toString('hex');
 const hash = value => createHash('sha256').update(value).digest('hex');
 const problem = (message, status) => Object.assign(new Error(message), { status });
 export class BrowserSessions {
-  constructor({ directory, hosted = false, allowLoopback = false, capacity = 32, idleMs = 30 * 60 * 1000 }) {
+  constructor({ directory, hosted = false, allowLoopback = false, capacity = 32, idleMs = 30 * 60 * 1000, connectionFactory, edition = null, checkpoints }) {
     this.directory = directory; this.hosted = hosted; this.allowLoopback = allowLoopback && !hosted;
     this.capacity = capacity; this.idleMs = idleMs; this.entries = new Map(); this.loading = new Map(); this.starts = new Map();
+    this.connectionFactory = connectionFactory; this.edition = edition; this.checkpoints = checkpoints;
     this.timer = setInterval(() => this.sweep(), 60000); this.timer.unref();
   }
   async saved(id) {
+    if (this.checkpoints) return this.checkpoints.read(id);
     try { return JSON.parse(await readFile(join(this.directory, id + '.json'), 'utf8')); }
     catch { return null; }
   }
@@ -30,7 +32,9 @@ export class BrowserSessions {
     const saved = id ? await this.saved(id) : null;
     if (!saved && !create) throw problem('会话已过期，请刷新页面', 401);
     if (!saved) {
-      const address = req.socket.remoteAddress || 'local', minute = Math.floor(Date.now() / 60000);
+      const visitor = req.headers['x-eighty-visitor'];
+      const address = this.edition && /^[a-f0-9]{64}$/.test(visitor || '') ? visitor : req.socket.remoteAddress || 'local';
+      const minute = Math.floor(Date.now() / 60000);
       if (this.starts.size > 1024) this.starts.clear();
       const prior = this.starts.get(address), rate = prior?.minute === minute ? prior.count + 1 : 1;
       this.starts.set(address, { minute, count: rate });
@@ -42,13 +46,14 @@ export class BrowserSessions {
     if (this.entries.has(id)) return this.entries.get(id);
     if (this.loading.has(id)) return this.loading.get(id);
     if (this.entries.size + this.loading.size >= this.capacity) throw problem('牌桌已满，请稍后重试', 503);
-    const building = this.build(id, saved); this.loading.set(id, building);
+    const building = this.build(id, saved, req.headers['x-eighty-visitor']); this.loading.set(id, building);
     try { context = await building; this.entries.set(id, context); return context; }
     finally { this.loading.delete(id); }
   }
-  async build(id, saved) {
+  async build(id, saved, visitor) {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
-    const connections = new Connections({ saved: saved?.connections || [], allowLoopback: this.allowLoopback });
+    const options = { saved: saved?.connections || [], allowLoopback: this.allowLoopback, id, visitor };
+    const connections = this.connectionFactory ? this.connectionFactory(options) : new Connections(options);
     const context = { id, connections, csrf: token(), revision: 0, lastSeen: Date.now(), writes: Promise.resolve(), streams: new Set(), mutations: [],
       auditRows: Array.isArray(saved?.auditRows) ? saved.auditRows.slice(-2000) : [] };
     const persist = data => {
@@ -56,6 +61,7 @@ export class BrowserSessions {
       // No cookie, CSRF token or API key is part of this checkpoint.
       const content = JSON.stringify({ ...data, connections: connections.snapshot(), auditRows: context.auditRows });
       context.writes = context.writes.then(async () => {
+        if (this.checkpoints) { await this.checkpoints.write(id, content); return; }
         await writeFile(join(this.directory, id + '.tmp'), content, { mode: 0o600 });
         await rename(join(this.directory, id + '.tmp'), join(this.directory, id + '.json'));
       }).catch(() => { context.saveFailed = true; });
@@ -84,7 +90,8 @@ export class BrowserSessions {
   }
   view(context, seat, restoreAvailable = false) {
     return { ...context.session.view(seat), connections: context.connections.list(), csrf: context.csrf, revision: context.revision,
-      hosted: this.hosted, restoreAvailable, saveFailed: !!context.saveFailed, restoreFailed: !!context.restoreFailed };
+      hosted: this.hosted, restoreAvailable, saveFailed: !!context.saveFailed, restoreFailed: !!context.restoreFailed,
+      ...(this.edition ? { siteEdition: this.edition } : {}) };
   }
   async sweep() {
     const now = Date.now();
@@ -96,7 +103,7 @@ export class BrowserSessions {
       if (this.entries.get(id) === context) this.entries.delete(id);
     }
     // Hosted demo storage has a bounded retention period. Local saves remain.
-    if (this.hosted) try {
+    if (this.hosted && !this.checkpoints) try {
       for (const file of await readdir(this.directory)) {
         if (!/^[a-f0-9]{64}\.json$/.test(file) || this.entries.has(file.slice(0, -5))) continue;
         if (now - (await stat(join(this.directory, file))).mtimeMs > 7 * 24 * 60 * 60 * 1000) await rm(join(this.directory, file));
