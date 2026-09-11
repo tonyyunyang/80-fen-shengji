@@ -6,6 +6,8 @@
 > deployment and optional sponsored AI in this repository.
 > [Hosting and version ownership](docs/site-edition.md). Sponsorship is off
 > by default; these deployment files do not mean a live service has been published.
+> The default uses **Workers Free-compatible SQLite Durable Objects**, with
+> no container or R2 requirement. Preview it with `npm run dev:free`.
 
 ![Eighty 0.3 — Flowing ink and a pixel card table](docs/media/arcade-menu-en.png)
 

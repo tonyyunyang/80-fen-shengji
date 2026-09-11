@@ -1,6 +1,6 @@
 import { Container } from '@cloudflare/containers';
-import { DurableObject, env } from 'cloudflare:workers';
-import { publicProfiles, secretMatches, sponsoredRequest, visitorIdentity } from './sponsor-core.js';
+import { env } from 'cloudflare:workers';
+import { publicProfiles, secretMatches, visitorIdentity } from './sponsor-core.js';
 import { checkpointRequest } from './checkpoints.js';
 import { browserOriginAllowed } from '../server/request-origin.js';
 
@@ -16,22 +16,7 @@ export class EightyContainer extends Container {
     EIGHTY_SPONSOR_PUBLIC_PROFILES: JSON.stringify(publicProfiles(env)),
   };
 }
-export class SponsoredAI extends DurableObject {
-  async fetch(request) {
-    const response = await sponsoredRequest(request, this.env, this.ctx.storage);
-    if (!await this.ctx.storage.getAlarm()) await this.ctx.storage.setAlarm(Date.now() + 86400000);
-    return response;
-  }
-  async alarm() {
-    const before = new Date(Date.now() - 2 * 86400000).toISOString().slice(0,10);
-    while (true) {
-      const expired = await this.ctx.storage.list({ end: before, limit: 1000 });
-      if (!expired.size) break;
-      await this.ctx.storage.delete([...expired.keys()]);
-    }
-    await this.ctx.storage.setAlarm(Date.now() + 86400000);
-  }
-}
+export { SponsoredAI } from './sponsored-object.js';
 export default {
   async fetch(request, bindings) {
     const url = new URL(request.url);

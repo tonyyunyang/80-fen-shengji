@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, '..');
 async function files(directory) {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && ['.wrangler','node_modules','dist','output','data'].includes(entry.name)) continue;
     const path = directory + '/' + entry.name;
     if (entry.isDirectory()) result.push(...await files(path)); else result.push(path);
   }

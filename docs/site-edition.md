@@ -1,175 +1,183 @@
-# Tony's website edition
+# Tony's website edition — Free hosting
 
-This is the deployment branch for Eighty on Tony's personal website.
-**Keep `codex/tonytheyang-site` as a long-lived branch in this repository.**
-Tony explicitly requested a maintained website edition rather than another
-copy of the game inside the website repository.
+**The default deployment is compatible with Cloudflare Workers Free.**
+`wrangler.jsonc` uses static assets, SQLite Durable Objects and Worker Secrets.
+It requires neither Containers nor R2, and does not require upgrading to a
+Workers Paid subscription. Usage must remain within Cloudflare's free limits.
 
-The branch began at `aa4003317dacb393e4997737e357bbf19dd45151` on `main`.
-The website's Projects page calls the game **Eighty**, with the subtitle
-**Classic Chinese Card Game**.
+The website calls the game **Eighty — Classic Chinese Card Game**.
+Its project cover is Collector’s Table, selected by Tony.
 
-## Ownership and updates
+## One game repository
 
-| Repository / branch | Owns |
+Keep `codex/tonytheyang-site` as a maintained, long-lived branch in
+`tonyyunyang/80-fen-shengji`. It began at
+`aa4003317dacb393e4997737e357bbf19dd45151` on `main`.
+
+| Location | Owns |
 | --- | --- |
-| `80-fen-shengji` / `main` | Shared game, rules, table, practice policy and normal BYOK version. |
-| `80-fen-shengji` / `codex/tonytheyang-site` | This website edition, Cloudflare deployment, sponsored connections and hosting adapters. |
-| `tonytheyang.com` | Projects entry, original promotional card-back artwork and its private design gallery. |
+| This repository / `main` | Shared rules, controllers, practice policy, pixel table and normal Node/BYOK app. |
+| This repository / `codex/tonytheyang-site` | Website hosting adapters, sponsored connections and deployment configuration. |
+| `tonytheyang.com` | Project link and promotional cover artwork. It does not vendor the game. |
 
-The website does not vendor the game, its API server, or its build output.
-Its project entry links to `https://eighty.tonytheyang.com/`. The local cover
-component uses `http://127.0.0.1:8231/` on localhost. The domain is configured
-in this branch's `wrangler.jsonc`; it has not been published by creating these
-files.
+Develop general game improvements for `main`, then merge the reviewed `main`
+into this branch. Keep website-specific changes here. Do not delete this
+branch as part of routine merged-feature cleanup. The intended public origin
+is `https://eighty.tonytheyang.com/`; no service is published by editing these files.
 
-Develop general improvements on a feature branch for `main`, then merge the
-reviewed `main` into this branch. Keep website-specific changes here. Do not
-delete this branch as part of routine merged-feature cleanup. Tag approved
-website releases so a deployment can be rolled back to a known commit.
+## Why Secrets do not need a container
 
-## Runtime
+Worker Secrets are private runtime bindings. The browser requests an action;
+the backend reads the key and calls the provider. The key is not sent to the
+browser or copied into frontend JavaScript. GitHub Actions secrets can supply
+a deployment, but putting their values into a frontend build would publish
+those values to visitors.
+
+The original container option preserved the Node server with few adaptations.
+Its runtime, not secret storage, required Workers Paid. The default has now
+been adapted to native Workers/SQLite Durable Objects. The optional legacy
+container configuration remains in `wrangler.container.jsonc`; use it only if
+that separate hosting choice is explicitly wanted. It is not the default build.
+
+## Free runtime
 
 ```mermaid
 flowchart LR
-  P[Personal website / Projects] --> G[eighty.tonytheyang.com]
-  G --> W[Cloudflare Worker]
-  W --> C[One named Node container]
-  C --> T[Existing table controller and rules]
-  C --> B[Authenticated sponsored broker]
-  B --> Q[Durable daily request counters]
-  B --> A[Ordinary model APIs]
-  C --> S[Authenticated checkpoint gateway]
-  S --> R[Private R2 saves]
+  P[Personal website / Projects] --> A[Static pixel-table assets]
+  A --> W[Worker: signed cookie and origin checks]
+  W --> T[One SQLite Durable Object per private table]
+  T --> E[Existing rules and controller]
+  T --> B[Private sponsored broker]
+  B --> K[Worker Secrets]
+  B --> M[Authorized Alibaba / Kimi endpoint]
 ```
 
-The Node implementation, single pixel table, cookie/CSRF boundaries,
-continuous dealing, hidden-information redaction, and shared 12-second model
-deadline remain in use. Containers preserve Node filesystem, HTTPS transport
-and worker-thread behavior without rewriting the game for a different engine.
-The container uses a stable name; random routing would split one browser's
-in-memory table across processes.
+The game remains server-authoritative. Visitors cannot select another table
+by providing an ID, send replacement state, or play a model seat's cards.
+Each model gets only its own observation; the shared 12-second decision
+limit, receipt-time bidding validation and private bidding timing remain.
 
-Hosted checkpoints go to private R2, expire after seven idle days, and restore
-paused after container restart. They contain game state and credential-free
-connection settings. Browser-supplied API keys remain memory-only and need
-re-entry after restart. The container filesystem is not treated as durable.
-Each checkpoint is limited to 1 MiB; a storage outage is reported instead of
-silently pretending a saved game does not exist.
+Signed, expiring HttpOnly cookies choose the table. CSRF tokens and revisions
+persist with the SQLite checkpoint so hibernation does not invalidate a
+legitimate next click. WebSockets use Cloudflare's hibernation API; idle
+heartbeats are answered without running the game JavaScript. A disconnected
+or hidden table pauses after the existing grace period. Saves expire after
+seven idle days. There is no continuously running Docker process.
 
-There is one `basic` container, at most 16 active browser sessions, and no
-cross-device multiplayer rooms. This is an initial bounded deployment, not
-a claim of capacity at scale. Load-test before raising session or instance
-limits. The [Cloudflare Containers documentation](https://developers.cloudflare.com/containers/)
-requires Workers Paid; container and R2 charges are separate from model usage.
+The Free mode uses the host's provided connections and free practice bots.
+It does not collect visitors' personal keys. The optional Node worker-thread
+endgame sampler is unavailable in this mode; normal practice play and the
+model's own-hand/public-information decision path remain. The normal Node
+app still supports its existing BYOK and optional threaded-analysis features.
+The preserved practice core is unchanged; no alternate table interface is added.
 
-## Sponsored AI
+`public/index.html` stays the only runtime HTML entry. The asset build copies
+that existing client and its six intentionally public shared modules into
+ignored `dist/free-assets/`. It does not copy server code, local saves, private
+keys, `.dev.vars`, or the personal website's Lab.
 
-Sponsorship is **off** in the checked-in configuration. With it off, visitors
-can still play with the three free practice bots. No model request is made
-by merely opening the game or its setup screen.
+## Authorized providers and private keys
 
-When enabled by the operator:
+The operator has authorized the supported provider endpoints for this
+website. The accepted list includes ordinary API endpoints and the selected
+Alibaba Coding/Token Plan and Kimi Code endpoints. A product name is not used
+as a blanket authorization prohibition. Use the credentials and billing terms
+approved for this deployment; do not put agreement documents or keys in Git.
 
-- Provider keys exist only as Worker secrets. They are never shipped to the
-  browser, put in profile metadata, stored in checkpoints, or passed into the
-  game container. The container has a separate internal gateway credential.
-- Hosted connections are read-only. Visitors may still add their own personal
-  connections; those retain the existing cookie isolation and DNS-pinned
-  transport. Editing a personal profile cannot redirect a sponsored key.
-- An operator may explicitly mark one sponsored profile as `default`. Fresh
-  visitors then get that model in the three bot seats. Existing saved setups
-  are preserved. An ordinary BYOK model list never auto-selects its first item.
-- Durable counters impose per-browser-session, salted-IP visitor, and global
-  UTC-day request limits. A new cookie does not reset the IP or global limit.
-  Shared networks may share the IP limit; this is not account-based identity.
-- Every upstream attempt counts, including repairs and failures. The broker
-  also caps output tokens, forces one non-streaming completion, rejects
-  redirects, bounds bodies and strips echoed keys. Failure or exhaustion
-  uses the existing practice fallback; actual model/fallback provenance is
-  retained. Private bidding does not display live quota activity.
+Provider keys exist only as Worker Secrets. Public profiles contain fixed
+model IDs and endpoint metadata, never key values. Only a validated game
+controller calls the internal broker; no generic model proxy is exposed to
+visitors. Requests cannot choose an arbitrary URL or credential. Provider
+responses are redacted after JSON decoding, including escaped key echoes.
 
-These are **request limits, not a guaranteed dollar ceiling**. Set limits
-against the chosen models' actual prices and configure provider-side billing
-controls before enabling public use. No paid smoke test is implied by setup.
+Sponsored connections are read-only. An operator may explicitly mark one as
+`default` for the three bot seats of a fresh visitor. Retired models return to
+practice bots. Daily request caps apply per session, per salted-IP visitor,
+and globally, with a per-call output cap. Model failures, timeouts and exhausted
+allowances retain the existing practice fallback and its separate provenance.
+These are request caps, not a guaranteed currency ceiling. No live inference
+is authorized merely by running tests or possessing a saved key.
 
-The currently documented Alibaba Coding/Token Plans exclude application
-backends, including the [personal Token Plan](https://help.aliyun.com/zh/model-studio/token-plan-personal-overview)
-and [team Token Plan](https://help.aliyun.com/zh/model-studio/token-plan-team-overview).
-[Kimi Code](https://www.kimi.com/code/docs/en/kimi-code/community-guidelines.html)
-is for personal interactive use. This broker accepts ordinary DashScope or
-Moonshot API endpoints; it does not spoof coding-tool identities or route a
-public game through those subscriptions. Use applicable standard API access,
-or obtain written provider confirmation for a different arrangement.
+Sponsorship ships **off**, with zero configured request budgets. The game can
+still be played with free practice bots. The default admission limit is 100
+new browser tables per day, with per-visitor creation limits; an existing valid
+cookie continues to select its table. Cookies cannot be invented to bypass
+this gate.
 
-## Prepare a deployment
+## Free limits
 
-Do these steps from this repository and branch, not from the personal website.
+As checked on September 11, 2026, Workers Free includes 100,000 dynamic requests
+per day and 10 ms of Worker CPU per invocation. SQLite Durable Objects are also
+available on Free, with their own request, active-duration and storage quotas.
+Exceeding a Free limit makes the affected operation fail; it does not silently
+upgrade the account. Model usage is governed separately by the provider terms.
 
-1. Verify `npm test`, `npm run check`, and `npm run test:site-worker`; use only offline fixtures until a
-   separate, bounded live-test allowance is provided.
-2. Connect a Cloudflare Workers Builds project to `80-fen-shengji`, with
-   production branch `codex/tonytheyang-site`. Install with
-   `npm ci --ignore-scripts`; deploy with `npx wrangler deploy`.
-3. Create the private R2 bucket `eighty-site-saves`, matching `wrangler.jsonc`.
-   Add a bucket lifecycle rule removing `sessions/` objects after seven days.
-4. Set `EIGHTY_GATEWAY_SECRET` with `npx wrangler secret put
-   EIGHTY_GATEWAY_SECRET`. Use a new random secret of at least 32 characters.
-   Keep it out of code, screenshots, and chat. This secret is required even
-   when model sponsorship is off, because it protects the container and saves.
-5. Confirm the custom domain, Workers Paid/Containers access, R2 binding, and
-   the configured capacity. Deploy the free-bot version first; verify browser
-   play, save/restore, isolation, and a quiet console on the actual domain.
-6. Only when applicable API credentials and explicit limits are ready, add
-   `SPONSOR_ALIBABA_API_KEY` and/or `SPONSOR_KIMI_API_KEY` using Worker secrets.
-   Fill `SPONSOR_PROFILES`, the three positive request limits, and the output
-   limit. Then set `SPONSORED_ENABLED` to `true` and redeploy. Do not put keys
-   inside the profiles JSON.
-7. Publish the personal website's Projects entry after the game domain works.
-   The private lab remains excluded from that separate website deployment.
+This is a Free-compatible implementation, not an unlimited-traffic or production
+capacity guarantee. Validate the actual account usage after launch before
+raising limits. Sources: [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/),
+[Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/),
+[Durable Object limits](https://developers.cloudflare.com/durable-objects/platform/limits/),
+and [Worker Secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
 
-One public profile has this shape (replace the model placeholder with a model
-actually available through your standard API):
+## Local review and verification
+
+```sh
+npm ci --ignore-scripts
+npm run dev:free
+# Optional alternate local port:
+npm run dev:free -- --port 8235
+```
+
+The helper builds the existing client, removes production routes from the
+local configuration, and uses an isolated ignored `output/free-local/` folder.
+Its generated `.dev.vars` contains a local session-signing secret with mode
+0600. Sponsorship defaults to off; it never imports keys from the canonical
+checkout's `.env`. The website's local project link uses port 8231.
+
+```sh
+npm test
+npm run check
+npm run test:free-worker
+npm run deploy:check
+```
+
+Native local checks use synthetic provider responses. They cover signed
+cookies, origin/CSRF isolation, private views, WebSocket heartbeats, legal and
+stale actions, and SQLite recovery across restart. The default deployment
+precheck builds the Worker and static assets without Docker.
+
+## Publish when the account and keys are ready
+
+1. Log in with `npx wrangler login` and confirm the intended Cloudflare account.
+   Select Workers Free if no paid plan is wanted; the default code needs no
+   Paid-only bindings or resources.
+2. Connect the Workers build to this repository and `codex/tonytheyang-site`.
+   Install with `npm ci --ignore-scripts`; deploy with `npx wrangler deploy`.
+3. Set a new random `EIGHTY_GATEWAY_SECRET` of at least 32 characters using
+   `npx wrangler secret put EIGHTY_GATEWAY_SECRET`. It signs table cookies and
+   protects internal operations. Keep it out of frontend builds and chat.
+4. Deploy the practice-bot version first and verify the actual custom domain.
+   No R2 bucket or container provisioning is needed.
+5. When approved provider credentials and explicit request budgets are ready,
+   add `SPONSOR_ALIBABA_API_KEY` and/or `SPONSOR_KIMI_API_KEY` as Worker Secrets.
+   Set `SPONSOR_PROFILES`, the three request caps and the output cap; then set
+   `SPONSORED_ENABLED` to `true`. Each profile uses an exact approved endpoint.
+6. Verify a separately authorized, bounded live test, then publish the personal
+   website's link. The private Lab is still excluded from that site's deployment.
+
+A profile has this shape; replace the placeholder with an actual entitled model:
 
 ```json
 {
   "id": "sponsored-alibaba",
   "name": "AI on Tony",
   "model": "replace-with-your-model-id",
-  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
   "keySecret": "SPONSOR_ALIBABA_API_KEY",
   "default": true
 }
 ```
 
-For Kimi's ordinary API, use an appropriate Moonshot `/v1` endpoint and
-`SPONSOR_KIMI_API_KEY`. The configuration accepts up to four fixed model
-profiles and at most one default. It intentionally ships without model or
-spending assumptions.
-
-## Local review
-
-```sh
-npm ci --ignore-scripts
-HOST=127.0.0.1 PORT=8231 EIGHTY_SITE_EDITION=1 npm start
-```
-
-No `.env` is read and sponsorship remains off without explicit configuration.
-Local saves use the ignored `data/` directory. Docker's build context is an
-allowlist: only the app, dependencies and license notices enter the image.
-The build excludes keys, local saves, private output, Git state and media docs.
-
-```sh
-docker build --platform linux/amd64 -t eighty-site-preview:local .
-npx wrangler deploy --dry-run
-```
-
-Container builds require access to the official Node image registry. A dry
-run does not publish the service. Record the actual result, including any
-registry/network failure, rather than treating a successful JavaScript bundle
-as a verified container deployment.
-
-References: [environment variables and secrets](https://developers.cloudflare.com/containers/examples/env-vars-and-secrets/),
-[container storage lifetime](https://developers.cloudflare.com/containers/faq/),
-[R2 Worker API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/),
-and the existing [security model](security-and-deployment.md).
+Kimi Code uses its configured `https://api.kimi.com/coding/v1` endpoint and
+`SPONSOR_KIMI_API_KEY`. Requests identify the real Eighty application. Provider
+specific model IDs and connection details must match the supplied credentials.

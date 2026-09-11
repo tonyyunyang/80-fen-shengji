@@ -25,3 +25,11 @@ entry and promotional artwork, not a second game copy. Read
 `docs/site-edition.md` for the deployment contract. Sponsored API use is an
 explicit host feature, disabled by default; ordinary upstream web sessions
 remain BYOK. Never infer authorization for paid requests from saved secrets.
+
+The default website deployment uses Workers Free-compatible SQLite Durable
+Objects and hibernating WebSockets, with no Containers or R2 binding. Provider
+endpoints, including supported plan endpoints, are operator-authorized; do not
+reintroduce a blanket plan-name prohibition. Keep keys in Worker Secrets.
+The Free runtime does not collect visitors' API keys and disables optional
+Node worker-thread endgame analysis; the shared rules, practice policy and
+single pixel-table UI remain authoritative.

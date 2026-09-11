@@ -4,11 +4,24 @@ const ENDPOINTS = new Set([
   'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
   'https://api.moonshot.ai/v1',
   'https://api.moonshot.cn/v1',
+  // Supported plan endpoints for this operator-authorized deployment.
+  // Keep exact endpoint pinning; entitlement is handled with the provider.
+  'https://coding.dashscope.aliyuncs.com/v1',
+  'https://coding-intl.dashscope.aliyuncs.com/v1',
+  'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+  'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
+  'https://api.kimi.com/coding/v1',
 ]);
 const KEY_NAMES = new Set(['SPONSOR_ALIBABA_API_KEY', 'SPONSOR_KIMI_API_KEY']);
 const idPattern = /^sponsored-[a-z0-9-]{1,40}$/;
 const identityPattern = /^[a-f0-9]{64}$/;
 const reply = (status, data) => Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
+function redact(value,secrets){
+  if(typeof value==='string'){for(const secret of secrets)value=value.split(secret).join('[redacted]');return value;}
+  if(Array.isArray(value))return value.map(item=>redact(item,secrets));
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[redact(key,secrets),redact(item,secrets)]));
+  return value;
+}
 
 export function limits(env) {
   const positive = (name, max) => {
@@ -22,14 +35,16 @@ export function limits(env) {
 export function profiles(env) {
   if (env.SPONSORED_ENABLED !== 'true') return [];
   limits(env);
-  const raw = JSON.parse(env.SPONSOR_PROFILES || '[]');
+  let raw;
+  try { raw = JSON.parse(env.SPONSOR_PROFILES || '[]'); }
+  catch { throw new Error('Invalid sponsored profile JSON'); }
   if (!Array.isArray(raw) || !raw.length || raw.length > 4) throw new Error('Configure one to four sponsored profiles');
   const seen = new Set();
   for (const p of raw) {
     if (!idPattern.test(p.id) || seen.has(p.id) || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 50 ||
       typeof p.model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/.test(p.model) ||
       !ENDPOINTS.has(p.baseUrl) || !KEY_NAMES.has(p.keySecret) || typeof env[p.keySecret] !== 'string' || env[p.keySecret].length < 8) {
-      throw new Error('Invalid sponsored configuration: use a standard API endpoint and a Worker secret');
+      throw new Error('Invalid sponsored configuration: use an approved endpoint and a Worker secret');
     }
     seen.add(p.id);
   }
@@ -98,7 +113,7 @@ export async function sponsoredRequest(request, env, storage, fetchImpl = fetch,
   }
   const requested = Number(input.max_completion_tokens ?? input.max_tokens ?? caps.output);
   if (!Number.isSafeInteger(requested) || requested <= 0) return reply(400, { error: { message: 'Invalid output limit' } });
-  const fields = ['model','messages','tools','tool_choice','parallel_tool_calls','enable_thinking','preserve_thinking','thinking_budget','reasoning_effort','thinking','response_format','temperature'];
+  const fields = ['model','messages','tools','tool_choice','parallel_tool_calls','enable_thinking','preserve_thinking','thinking_budget','reasoning_effort','thinking','response_format','temperature','tool_stream','clear_thinking'];
   const payload = Object.fromEntries(fields.filter(k => input[k] !== undefined).map(k => [k,input[k]]));
   payload.stream = false; payload.n = 1;
   payload[input.max_completion_tokens !== undefined ? 'max_completion_tokens' : 'max_tokens'] = Math.min(requested, caps.output);
@@ -114,11 +129,12 @@ export async function sponsoredRequest(request, env, storage, fetchImpl = fetch,
   const timer = setTimeout(abort, 11000);
   try {
     const upstream = await fetchImpl(profile.baseUrl + '/chat/completions', { method: 'POST', redirect: 'manual', signal: controller.signal,
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[profile.keySecret] }, body: JSON.stringify(payload) });
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[profile.keySecret], 'user-agent': 'Eighty-Website/0.3.0 (tonytheyang.com)' }, body: JSON.stringify(payload) });
     if (upstream.status >= 300 && upstream.status < 400) return reply(502, { error: { message: 'Provider redirect rejected' } });
-    let raw = await boundedText(upstream.body, 1048576);
-    for (const key of KEY_NAMES) if (env[key]) raw = raw.split(env[key]).join('[redacted]');
-    const data = JSON.parse(raw);
+    const raw = await boundedText(upstream.body, 1048576);
+    // Redact after JSON decoding, so escaped Unicode cannot conceal an
+    // echoed key inside provider IDs, errors, usage metadata or tool content.
+    const data = redact(JSON.parse(raw), [...KEY_NAMES].map(key=>env[key]).filter(Boolean));
     if (!upstream.ok) return reply(upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
       { error: { message: 'Sponsored provider request failed' }, ...(data.usage ? { usage: data.usage } : {}) });
     return reply(200, data);

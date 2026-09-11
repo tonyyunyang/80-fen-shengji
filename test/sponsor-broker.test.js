@@ -20,12 +20,13 @@ function request({ session = 'a'.repeat(64), visitor = 'b'.repeat(64), payload =
     'content-type': 'application/json', authorization, 'x-eighty-session': session, 'x-eighty-visitor': visitor,
   }, body: JSON.stringify(payload) });
 }
-test('sponsorship is disabled by default and only ordinary API endpoints are accepted', () => {
+test('sponsorship stays opt-in and accepts the provider endpoints covered by owner authorization', () => {
   assert.deepEqual(profiles({}), []);
   assert.throws(() => profiles({ ...env, SPONSOR_DAILY_REQUESTS: '0' }), /explicitly configured/);
-  for (const baseUrl of ['https://coding.dashscope.aliyuncs.com/v1', 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1', 'https://api.kimi.com/coding/v1', 'https://private.example.com/v1']) {
-    assert.throws(() => profiles({ ...env, SPONSOR_PROFILES: JSON.stringify([{ ...profile, baseUrl }]) }), /standard API/);
+  for (const baseUrl of ['https://coding.dashscope.aliyuncs.com/v1', 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1', 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1', 'https://api.kimi.com/coding/v1']) {
+    assert.equal(profiles({ ...env, SPONSOR_PROFILES: JSON.stringify([{ ...profile, baseUrl }]) })[0].baseUrl, baseUrl);
   }
+  assert.throws(() => profiles({ ...env, SPONSOR_PROFILES: JSON.stringify([{ ...profile, baseUrl:'https://private.example.com/v1' }]) }), /approved endpoint/);
   assert.equal(JSON.stringify(publicProfiles(env)).includes(key), false);
   assert.equal('keySecret' in publicProfiles(env)[0], false);
   assert.throws(() => profiles({ ...env, SPONSOR_PROFILES: JSON.stringify([{ ...profile, name: key }]) }), /credentials/);
@@ -77,4 +78,10 @@ test('visitor identity is deterministic, salted and not a raw IP address', async
   assert.match(a,/^[a-f0-9]{64}$/);
   assert.equal(a,await visitorIdentity('203.0.113.7',secret));
   assert.notEqual(a,await visitorIdentity('203.0.113.7','different-secret'));
+});
+test('JSON-escaped provider credentials are redacted before metadata reaches the table',async()=>{
+  const wire=JSON.stringify({id:key,choices:[{message:{content:key}}]}).replaceAll('f','\\u0066');
+  const response=await sponsoredRequest(request(),env,memoryStorage(),async()=>new Response(wire,{headers:{'content-type':'application/json'}}));
+  assert.equal(response.status,200);
+  const data=await response.json();assert.equal(data.id,'[redacted]');assert.equal(data.choices[0].message.content,'[redacted]');
 });

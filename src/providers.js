@@ -1,4 +1,8 @@
-import { analyzeEndgame } from './analysis-worker.js';
+// Node's optional threaded analysis is loaded only when requested. The
+// Cloudflare Free adapter uses the same model/rules path with this optional
+// feature disabled, so its bundle does not import node:worker_threads.
+let analysisModule;
+const loadAnalysis = () => analysisModule ||= import(new URL('./analysis-worker.js', import.meta.url).href);
 import { buildExpertFacts, EXPERT_FACTS_PROMPT } from './expert-facts.js';
 import { expertPrompt } from './expert-prompt.js';
 import { createHash } from 'node:crypto';
@@ -217,7 +221,7 @@ export async function requestAction(view, seat, options = {}) {
     const args = moves?.length ? { move_id: match } : action.type === 'declare' ? { choice: action.choice } : action.type === 'rebel' ? { accept: action.accept } : { card_ids: action.cardIds };
     return { action: parseToolCall(tool.name, args, view.phase, moves), usage: { input: 0, output: 0, cached: 0, cacheWrite: 0 }, ms: performance.now() - started, simulated: true };
   }
-  if (options.contextProfile?.startsWith('expert-search-')) options = {...options,endgameAnalysis:await analyzeEndgame(view,followMoves(view),options.signal,options.contextProfile==='expert-search-wide-zh'?{samples:32,maxMs:2500}:undefined)};
+  if (options.contextProfile?.startsWith('expert-search-')) options = {...options,endgameAnalysis:await (await loadAnalysis()).analyzeEndgame(view,followMoves(view),options.signal,options.contextProfile==='expert-search-wide-zh'?{samples:32,maxMs:2500}:undefined)};
   const request = buildRequest(view, seat, options);
   const secrets = Object.entries(options.env || process.env).filter(([key]) => key.endsWith('API_KEY')).map(([, value]) => value);
   const body = JSON.stringify(request.body);

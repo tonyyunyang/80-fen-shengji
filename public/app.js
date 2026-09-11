@@ -109,6 +109,7 @@ let status = { mock: true, openai: false, claude: false, qwen: false },
   selected = new Set(),
   lastDecision = null,
   noticeTimer;
+let socketHeartbeat=null, socketPresence=null, reconnectTimer=null;
 let quiz = null,
   quizKey = null,
   quizSelection = new Set(),
@@ -219,7 +220,7 @@ function renderSetup() {
           option('peilian', t('陪练 · 本地策略'), seat.kind) +
           option('api', t('API 模型'), seat.kind) +
           '</select></div>' +
-          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || [], label + ' · ' + hint) : '') +
+          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || [], label + ' · ' + hint, latest?.capabilities) : '') +
           '</div>'
         );
       })
@@ -564,6 +565,11 @@ async function pauseGame() {
 }
 function presence() {
   if (!csrfToken) return;
+  if(latest?.capabilities?.webSocket){
+    const visible=viewMode==='game'&&!document.hidden;
+    if(stream?.readyState===1&&socketPresence!==visible){stream.send(JSON.stringify({type:'presence',visible}));socketPresence=visible;}
+    return;
+  }
   fetch('/api/presence', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-eighty-csrf': csrfToken },
@@ -616,32 +622,47 @@ async function refreshState() {
   return next;
 }
 function connect() {
+  clearTimeout(reconnectTimer);reconnecting=false;
+  clearInterval(socketHeartbeat);socketHeartbeat=null;socketPresence=null;
   stream?.close();
   connected = false;
-  const connection = new EventSource(
-    '/api/events?seat=' + viewer + '&client=' + clientId + '&visible=' + (viewMode === 'game' && !document.hidden),
-  );
+  const useSocket=latest?.capabilities?.webSocket===true;
+  const visible=viewMode==='game'&&!document.hidden;
+  const path='/api/events?seat='+viewer+'&client='+clientId+'&visible='+visible;
+  const connection=useSocket?new WebSocket(location.origin.replace(/^http/,'ws')+path):new EventSource(path);
   stream = connection;
+  if(useSocket){
+    socketPresence=visible;
+    connection.onopen=()=>{
+      if(stream!==connection)return;
+      socketHeartbeat=setInterval(()=>{if(stream===connection&&connection.readyState===1)connection.send('{"type":"ping"}');},25000);
+    };
+    connection.onclose=()=>{if(stream===connection){clearInterval(socketHeartbeat);connection.onerror();}};
+  }
   connection.onmessage = (event) => {
-    if (stream !== connection) return;
+    if (stream !== connection || connection.readyState>1) return;
+    const data=JSON.parse(event.data);
+    if(data.type==='pong')return;
+    clearTimeout(reconnectTimer);reconnecting=false;
     const reconnect = !connected;
     connected = true;
-    receive(JSON.parse(event.data));
+    receive(data);
     if (reconnect) presence();
   };
-  connection.onerror = async () => {
+  connection.onerror = () => {
     if (stream !== connection) return;
     connected = false;
     render();
     if (!reconnecting) {
       reconnecting = true;
-      try {
-        await refreshState();
-        if (stream === connection) connect();
-      } catch {
-      } finally {
-        reconnecting = false;
-      }
+      clearInterval(socketHeartbeat);connection.close();
+      let delay=1500;
+      const retry=async()=>{
+        if(stream!==connection)return;
+        try{await refreshState();if(stream===connection)connect();}
+        catch{if(stream===connection){delay=Math.min(30000,delay*2);reconnectTimer=setTimeout(retry,delay);}}
+      };
+      reconnectTimer=setTimeout(retry,delay);
     }
   };
 }
@@ -1725,13 +1746,20 @@ window.visualViewport?.addEventListener('resize', resizeTable);
 renderSetup();
 renderMenu();
 try {
-  const initial = await fetch('/api/state?seat=-1').then((response) => response.json());
+  const initialResponse = await fetch('/api/state?seat=-1');
+  if(!initialResponse.ok)throw new Error('Table service is not ready');
+  const initial = await initialResponse.json();
   status = initial.providers;
   latest = initial;
   csrfToken = initial.csrf || '';
+  if(initial.capabilities?.personalConnections===false){
+    $('connectionsButton').hidden=true;
+    $('apiSettingsTitle').textContent=pick('网站提供的 AI','AI provided by this site');
+    $('apiSettingsHelp').textContent=pick('无需提交个人 key。网站提供的模型可在座位里选择；也可以一直使用免费陪练。','No personal key is needed. Choose a provided model in a seat, or keep using the free practice bots.');
+  }
   // A retired host model must not leave a returning visitor stuck in setup.
   // Personal API choices keep their existing explicit configuration flow.
-  config.seats = config.seats.map(seat => seat.kind === 'api' && seat.connectionId?.startsWith('sponsored-') &&
+  config.seats = config.seats.map(seat => seat.kind === 'api' && seat.provider!=='mock' && (seat.connectionId?.startsWith('sponsored-')||initial.capabilities?.personalConnections===false) &&
     !initial.connections?.some(p => p.id === seat.connectionId && p.active && p.models.some(m => m.id === seat.model))
     ? { ...seat, kind: 'peilian', provider: 'mock', connectionId: undefined, model: '' } : seat);
   const hostedDefault = initial.connections?.find(p => p.sponsored && p.default && p.active);
