@@ -59,14 +59,24 @@ function fixture({ picked = 1, reduced = false, accepted = true } = {}) {
     toggle: id => state.toggles.push(id), drop: ids => { state.drops.push(ids); return accepted; },
     preview: ids => ({ valid: accepted, label: 'Release ' + ids.length }), reducedMotion: () => reduced,
   });
-  function pointer(type, clientX = 110, clientY = 430, pointerId = 7, button = 0) {
+  function pointer(type, clientX = 110, clientY = 430, pointerId = 7, button = 0, pointerType = 'mouse') {
     const event = new Event(type, { cancelable: true });
-    Object.assign(event, { clientX, clientY, pointerId, button, pointerType: 'mouse' }); root.dispatchEvent(event);
+    Object.assign(event, { clientX, clientY, pointerId, button, pointerType }); root.dispatchEvent(event);
   }
   const ghost = () => document.body.children.find(node => node.className === 'drag-ghost');
   const finish = async () => { animations.forEach(animation => animation.finish()); await Promise.resolve(); };
   return { root, nodes, selection, state, hover, drag, pointer, ghost, finish, animations, window, document, dropTarget };
 }
+
+test('touch swipes release the card to native horizontal scrolling; taps and upward drags still work',()=>{
+  const f=fixture();
+  const touch=(type,x=110,y=430)=>f.pointer(type,x,y,7,0,'touch');
+  touch('pointerdown');touch('pointermove',99,428);touch('pointermove',30,426);touch('pointerup',30,426);
+  assert.equal(f.ghost(),undefined);assert.deepEqual(f.state.toggles,[]);assert.deepEqual(f.state.drops,[]);assert.equal(f.drag.active,false);
+  touch('pointerdown');touch('pointerup');assert.deepEqual(f.state.toggles,[1]);
+  touch('pointerdown');touch('pointermove',112,410);assert.ok(f.ghost());touch('pointermove',200,200);touch('pointerup',200,200);
+  assert.deepEqual(f.state.drops,[[1,3]]);f.drag.destroy();
+});
 
 test('either selected physical card carries the complete selection and submits it once', async () => {
   for (const picked of [1, 3]) {

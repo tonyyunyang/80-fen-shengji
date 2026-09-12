@@ -1,7 +1,7 @@
 import {createHmac} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import ipaddr from 'ipaddr.js';
-import {publicView} from '../src/game.js';
+import {completedReplay} from './completed-replay.js';
 
 export function visitorIp(value) {
   if(typeof value!=='string'||value.length>64||!ipaddr.isValid(value.trim()))return 'none';
@@ -17,14 +17,14 @@ export function completedResult(state,{ownerId,secret,ip='none',now=Date.now()}=
   const epoch=state.completedDealEpoch;
   if(!Number.isInteger(epoch)||epoch!==state.attempts||!state.events?.some(e=>e.type==='round_scored'&&e.deal===epoch)||typeof state.score.attackersWin!=='boolean')return null;
   if(!/^[a-f0-9]{64}$/.test(ownerId||'')||typeof secret!=='string'||secret.length<32)return null;
-  const events=publicView(state,-1).events.filter(e=>e.deal===epoch);
+  const fullReplay=completedReplay(state),events=fullReplay.events;
   const sources={};
   for(const event of state.events.filter(e=>e.deal===epoch&&e.type==='decision_applied')){
     const source=['human','autoplay','peilian','api','simulated','mock','fallback','peilian-fallback','forced'].includes(event.source)?event.source:'other';sources[source]=(sources[source]||0)+1;
   }
-  // Store the completed deal's public record, never the shuffle seed, future
+  // Private, complete deal after settlement; never the shuffle seed, future
   // deal, prompts, user-entered names, API credentials or private provider URLs.
-  const replay=JSON.stringify(events);
+  const replay=JSON.stringify(fullReplay);
   if(new TextEncoder().encode(replay).length>131072)throw new Error('Completed replay exceeds archive limit');
   return {
     result_id:state.id+':'+epoch,
@@ -41,10 +41,11 @@ export function completedResult(state,{ownerId,secret,ip='none',now=Date.now()}=
 export const RESULT_COLUMNS=['result_id','user_id','game_id','deal_epoch','round_number','completed_at','is_complete','winning_team','dealer','attackers_win','final_attack_points','ruleset','rules_json','trump_json','levels_before_json','levels_after_json','seats_json','action_sources_json','replay_json','ip_address','schema_version'];
 export const RESULT_INSERT=`INSERT INTO completed_games (${RESULT_COLUMNS.join(',')}) VALUES (${RESULT_COLUMNS.map(()=>'?').join(',')}) ON CONFLICT DO NOTHING`;
 export function encodedReplay(value){
-  return JSON.stringify({encoding:'gzip+base64',bytes:Buffer.byteLength(value),events:JSON.parse(value).length,data:gzipSync(value,{level:6}).toString('base64')});
+  const replay=JSON.parse(value);
+  return JSON.stringify({encoding:'gzip+base64',replayVersion:Array.isArray(replay)?1:replay.version,bytes:Buffer.byteLength(value),events:(replay.events||replay).length,data:gzipSync(value,{level:6}).toString('base64')});
 }
 export function decodedReplay(value){
-  const data=JSON.parse(value);if(Array.isArray(data))return data;
+  const data=JSON.parse(value);if(Array.isArray(data)||data?.format==='eighty-completed-deal')return data;
   if(data?.encoding!=='gzip+base64')throw new Error('Unsupported replay encoding');
   return JSON.parse(gunzipSync(Buffer.from(data.data,'base64'),{maxOutputLength:131072}).toString('utf8'));
 }

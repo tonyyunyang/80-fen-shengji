@@ -98,7 +98,7 @@ export function createHandDrag(root, {
     if (!ids.includes(id) || items.some(item => !item)) return;
     if (event.pointerType !== 'touch') event.preventDefault();
     gesture = { pointerId: event.pointerId, id, ids, items, rect: items.find(item => item.id === id).rect,
-      viewport: viewport(), x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false, shift: event.shiftKey };
+      pointerType: event.pointerType, viewport: viewport(), x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false, shift: event.shiftKey };
     hover.freeze(); root.setPointerCapture(event.pointerId);
   }
 
@@ -141,7 +141,11 @@ export function createHandDrag(root, {
   function move(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     gesture.dx = event.clientX - gesture.x; gesture.dy = event.clientY - gesture.y;
-    if (!gesture.dragging && Math.hypot(gesture.dx, gesture.dy) > 7) lift();
+    // A horizontal touch belongs to the hand's native scroll area. Releasing
+    // capture before lifting prevents a swipe from flashing a dragged card or
+    // selecting it on release. Vertical drags retain the existing play gesture.
+    if (!gesture.dragging && gesture.pointerType === 'touch' && Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) { cancel(true); return; }
+    if (!gesture.dragging && Math.hypot(gesture.dx, gesture.dy) > (gesture.pointerType === 'touch' ? 10 : 7)) lift();
     if (ghost) {
       const angle = reducedMotion() ? 0 : Math.max(-5, Math.min(5, gesture.dx * .018));
       ghost.style.transform = transform(gesture.dx, gesture.dy, angle);

@@ -24,8 +24,8 @@ export const UI_LABELS = Object.freeze({
     'Flowing ink, card glints, plays and trick collection. Turn off for a still table with every control intact. System reduced-motion is respected.',
   ],
   handLayoutHelp: [
-    '始终一排：25 张与拿底后的 33 张使用同一手牌区。牌桌会随窗口整体缩放。',
-    'Always one row: 25 cards and the dealer’s 33 cards share the same hand area. The complete table fits your window.',
+    '始终一排：25 张与拿底后的 33 张使用同一手牌区。手机左右滑动看牌，点选后出牌；电脑牌桌随窗口缩放。',
+    'One row for 25 or 33 cards. On phones, swipe sideways to browse, then tap cards and Play. Desktop tables scale to fit the window.',
   ],
   apiSettingsTitle: ['自己的 API', 'Your API'],
   apiSettingsHelp: [

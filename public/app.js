@@ -708,6 +708,7 @@ function handCard(card, enabled, game) {
   return `<button class="hand-slot" data-live-style data-trump="${!!trump}" data-recalled="${Date.now() - (recalled.get(card.id) || 0) < 450}" data-arriving="${arriving?.id === card.id && Date.now() - arriving.at < 350}" data-card="${card.id}" tabindex="${tab ? '0' : '-1'}" aria-label="${escape(cardLabel(card)) + pick(' 第' + (card.id >= 54 ? '二' : '一') + '张', ' · copy ' + (card.id >= 54 ? 2 : 1)) + (trump ? pick('，主牌', ', trump') : '')}" aria-pressed="${selected.has(card.id)}"${enabled ? '' : ' disabled'}><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></button>`;
 }
 function handPanel(game) {
+  const touch = innerWidth < 760 || matchMedia('(pointer: coarse)').matches;
   const decision = game.pending,
     bidding = game.dealing === 'continuous' && ['dealing', 'closing'].includes(game.phase);
   const handoff =
@@ -758,6 +759,10 @@ function handPanel(game) {
     const ready =
       decision.phase === 'bury'
         ? pick('选好了，确认扣底', 'Ready to bury')
+        : touch
+          ? appearance.dragToPlay
+            ? pick('按出牌确认，也可向上拖出', 'Press Play or drag upward')
+            : pick('按出牌确认', 'Press Play to confirm')
         : appearance.dragToPlay
           ? pick('拖动任一已选牌一起出 · 也可按出牌', 'Drag any selected card to play the group · or press Play')
           : pick('准备好了，确认出牌', 'Ready to confirm');
@@ -765,6 +770,8 @@ function handPanel(game) {
       ? pick('已选 ', 'Selected ') + selected.size + ' · ' + (error || ready)
       : decision.phase === 'bury'
         ? pick('选满 8 张，再确认扣底', 'Select eight cards, then confirm')
+        : touch
+          ? pick('左右滑动看牌 · 点选后按出牌', 'Swipe to browse · tap cards, then Play')
         : appearance.dragToPlay
           ? pick('点选悬起 · 拖动已选牌可整组出牌', 'Click to select · drag a selected card to play the group')
           : pick('点选或拖出选牌 · 按出牌确认', 'Click or drag to select · confirm to play');
@@ -782,7 +789,7 @@ function handPanel(game) {
           '陪练正在替你打牌，可在暂停菜单收回托管。',
           'A practice bot is playing your hand. Take back control from the pause menu.',
         )
-      : '';
+      : touch ? pick('左右滑动查看手牌', 'Swipe sideways to browse your hand') : '';
   }
   const shown = new Set(
       displayedDeclarations(game)
@@ -820,6 +827,15 @@ function layoutHand() {
   try {
     const width = frame.clientWidth,
       height = frame.clientHeight;
+    const mobile = width < 760 || width < 1050 && (height < 540 || matchMedia('(pointer: coarse)').matches);
+    board.dataset.layout = mobile ? height < 540 && width > height ? 'compact' : 'phone' : 'desktop';
+    board.dataset.density = height < 620 ? 'tiny' : height < 740 ? 'short' : 'normal';
+    if (mobile) {
+      board.style.width = width + 'px';
+      board.style.left = '0px';board.style.top = '0px';board.style.transform = 'none';board.dataset.sceneScale = '1';
+      layoutHandCards();layoutTable(height);handHover?.refresh();
+      return;
+    }
     const minimumWidth = Math.max(1280, handLayout(33, 1280, appearance.handSize).contentWidth + 44);
     let scale = initialSceneScale(width, height, minimumWidth);
     for (let pass = 0; pass < 5; pass++) {
@@ -853,7 +869,10 @@ function layoutHandCards() {
     content = $('handContent');
   if (!root || !content || !root.clientWidth || handDrag?.active) return;
   const nodes = [...content.querySelectorAll('.hand-slot')],
-    layout = handLayout(nodes.length, root.clientWidth, appearance.handSize);
+    mode = $('cardTable').dataset.layout,
+    density = $('cardTable').dataset.density,
+    handScale = appearance.handSize * (mode === 'phone' ? density === 'tiny' ? .75 : density === 'short' ? 11/12 : 1 : 1),
+    layout = handLayout(nodes.length, root.clientWidth, handScale, mode !== 'desktop', mode === 'compact');
   content.style.width = layout.contentWidth + 'px';
   $('cardTable').style.setProperty('--hand-h', layout.cardHeight + 'px');
   root.style.setProperty('--card-w', layout.cardWidth + 'px');
@@ -872,6 +891,7 @@ function layoutTable(sceneHeight) {
   const board = $('cardTable'),
     probe = $('tableCardSize');
   if (!board || !probe?.offsetWidth) return;
+  const mobile = board.dataset.layout !== 'desktop', compact = board.dataset.layout === 'compact';
   const north = board.querySelector('.seat.north');
   const sides = [...board.querySelectorAll('.seat.west,.seat.east')],
     panel = board.querySelector('.hand-panel');
@@ -885,7 +905,7 @@ function layoutTable(sceneHeight) {
     captionHeight = $('tableCaptionSize').offsetHeight;
   const layout = tableLayout({
     width: board.clientWidth,
-    height: Math.max(850, sceneHeight),
+    height: mobile ? sceneHeight : Math.max(850, sceneHeight),
     northBottom: north.offsetTop + north.offsetHeight,
     sideEdge: Math.max(
       ...sides.map((node) =>
@@ -898,7 +918,9 @@ function layoutTable(sceneHeight) {
     handBottom: parseFloat(getComputedStyle(spectatorSeat || panel).bottom) || 0,
     cardWidth,
     captionHeight,
-    narrow: false,
+    narrow: mobile,
+    compact,
+    dense: mobile && board.dataset.density !== 'normal',
   });
   board.style.height = layout.height + 'px';
   board.style.minHeight = layout.minimumHeight + 'px';
@@ -1000,8 +1022,8 @@ function bindHand() {
         items: () => [...root.querySelectorAll('.hand-slot')],
         visual: (node) => node.querySelector('.lift'),
         identity: (node) => Number(node.dataset.card),
-        lift: 46,
-        selectedLift: 38,
+        lift: () => $('cardTable')?.dataset.layout === 'desktop' ? 46 : 24,
+        selectedLift: () => $('cardTable')?.dataset.layout === 'desktop' ? 38 : 22,
         spread: true,
         reducedMotion: () => !appearance.motion,
         clipToRoot: true,
@@ -1788,7 +1810,7 @@ try {
   if(initial.siteEdition?.results?.enabled){
     $('resultsNotice').hidden=false;
     const retained=initial.siteEdition.results.ipRetentionDays;
-    $('resultsNotice').textContent=pick('完成的单局会私下保存胜方、公共牌谱和匿名会话 ID；未完成的局不进入成绩库。','Completed deals privately save their winner, public replay and anonymous session ID; unfinished deals do not enter the results archive. ')+
+    $('resultsNotice').textContent=pick('完成的单局会私下保存胜方、完整牌谱（含四家初始手牌）和匿名会话 ID；未完成的局不进入成绩库。','Completed deals privately save their winner, complete replay (including all four initial hands) and anonymous session ID; unfinished deals do not enter the results archive. ')+
       (retained?pick('获取到的 IP 在 '+retained+' 天后清除。','Available IP addresses are cleared after '+retained+' days.'):pick('获取到的 IP 随牌谱保留。','Available IP addresses are retained with the replay.'));
   }
   if(initial.capabilities?.personalConnections===false){

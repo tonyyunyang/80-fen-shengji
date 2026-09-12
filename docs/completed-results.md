@@ -1,7 +1,7 @@
 # Completed game results and traffic capacity
 
 Implemented September 12, 2026. The private results archive stores the winner
-and public replay of every newly completed deal, including AI-only tables.
+and a complete private replay of every newly completed deal, including AI-only tables.
 Interrupted deals are excluded. The existing temporary checkpoints are separate.
 
 ## What happens when 100 people open the game
@@ -63,8 +63,12 @@ final score, and a matching `round_scored` event for `completedDealEpoch`. It
 derives the winner from the scoring engine. A repeated terminal notification
 cannot create another row for the same game/deal epoch.
 
-Only events from that completed epoch enter its public replay. Private draw
-events, names, prompts, keys, shuffle seeds and later deals are not exported.
+Only that completed epoch enters its replay. Version 2 includes the original
+four 25-card hands, the 100 ordered draws, the eight original kitty cards and
+the eight cards buried by the dealer. These come from the authoritative draw
+history only after settlement. Names, prompts, keys, shuffle seeds and later
+deals are not exported. Active player views and downloadable public replays
+remain restricted to the viewer's own hand and public information.
 Old completed checkpoints are not automatically backfilled on deployment.
 
 ## Record contents
@@ -75,15 +79,27 @@ Old completed checkpoints are not automatically backfilled on deployment.
 | Outcome | Completion time, dealer, winning team, final attack score and upgrade result |
 | Rules | Ruleset/version, trump and before/after team levels |
 | Seats | Human/practice/API role and model ID; no names, keys, private base URLs or prompts |
-| Replay | This completed deal's public declarations, plays, tricks and settlement |
+| Replay | Four initial hands, draw order, original kitty, buried cards, declarations, every play, captured tricks and settlement |
 | Network | Validated Cloudflare visitor IP, or the literal `none` when unavailable |
 
 The `replay_json` column is a JSON envelope containing gzip/base64 data, its
-original byte length and event count. `decodedReplay()` in
-`cloudflare/result-record.js` restores the public event array for operator
-analysis. Summary fields remain directly queryable without decompressing the
+original byte length, public event count and `replayVersion`. `decodedReplay()` in
+`cloudflare/result-record.js` restores a version 2 completed-deal object for operator
+analysis. `replayTimeline()` in `cloudflare/completed-replay.js` reconstructs all
+four hands after the deal, kitty pickup, burial and every play, then verifies
+each trick's winner and score and the final settlement. The original kitty is
+picked up as a group; its array order is not a recorded shuffle order.
+Summary fields remain directly queryable without decompressing the
 replay. This keeps repeated JSON field names from consuming most of the Free
 database's storage.
+
+The SQL row schema stays at version 1; the replay payload is separately versioned.
+Legacy replay envelopes without `replayVersion` (or with value 1) decode to
+public event arrays. They can show the played cards, trump and score, but do
+not contain the original hands or original kitty. Do not label those rows
+fully replayable or fabricate missing cards. New version 2 rows need no D1
+schema migration. Tests compare reconstructed hands against the actual engine
+after every play in ordered and continuous dealing, including non-default trump.
 
 The anonymous user ID is derived with a domain-separated HMAC from the
 existing signed browser session, never from its IP. It groups that browser
@@ -103,6 +119,18 @@ notice describing the archive and IP retention. `RESULT_IP_RETENTION_DAYS=30` re
 retaining the game record; `0` retains them alongside the record. The daily
 cleanup handles D1 rows, and outbox retries scrub expired IPs too. D1 Time
 Travel backups have their own seven-day Free retention window. The database and exports stay private to the operator.
+
+## Returning to the menu and starting again
+
+The main-menu action pauses the session before navigating. Starting again
+stops its old draw/decision timers, aborts in-flight provider calls, and advances
+the generation guard so late replies cannot act on the new game. It reuses the
+same signed browser table and sponsored allowance; it does not admit another
+Durable Object or reset the visitor's daily quota. Only already completed deals
+enter D1. A request already accepted by the provider can still consume tokens
+despite cancellation; any reported late usage stays attached to the old game.
+The temporary checkpoint is replaced by the new game, while existing completed
+results and any pending archive outbox remain intact.
 
 ## Reliability without slowing play
 

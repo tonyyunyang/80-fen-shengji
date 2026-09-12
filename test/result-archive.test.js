@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
-import {createGame,applyAction,safeAction,nextDeal,observation} from '../src/game.js';
+import {createGame,applyAction,safeAction,nextDeal,observation,drawCard,closeBidding,applyBid,publicView} from '../src/game.js';
+import {replayTimeline} from '../cloudflare/completed-replay.js';
 import {completedResult,visitorIp,encodedReplay,decodedReplay} from '../cloudflare/result-record.js';
 import {ResultArchive,pruneResultIps} from '../cloudflare/result-archive.js';
 
@@ -22,7 +23,7 @@ test('only a terminal, completely played deal produces a result; AI-only winners
 test('records include only the completed epoch and safe metadata, with a separate anonymous user identity',()=>{
   const next=finish(nextDeal(finished));next.events.push({type:'private-fixture',deal:next.attempts,audience:0,secret:'do-not-export'});
   const record=completedResult(next,identity),text=JSON.stringify(record);
-  assert.ok(JSON.parse(record.replay_json).every(e=>e.deal===next.completedDealEpoch));
+  assert.ok(JSON.parse(record.replay_json).events.every(e=>e.deal===next.completedDealEpoch));
   for(const value of ['do-not-export','private name',secret,'"seed"'])assert.equal(text.includes(value),false);
   assert.notEqual(record.user_id,ownerId);assert.equal(record.user_id,completedResult(finished,identity).user_id);
   assert.notEqual(record.result_id,completedResult(finished,identity).result_id);
@@ -31,10 +32,57 @@ test('only usable public IP addresses are stored, with none for unavailable or s
   for(const value of [null,'none','invalid','127.0.0.1','10.0.0.1','::1','2a06:98c0:3600::103'])assert.equal(visitorIp(value),'none');
   assert.equal(visitorIp('93.184.216.34'),'93.184.216.34');assert.equal(visitorIp('2001:4860:4860::8888'),'2001:4860:4860::8888');
 });
-test('completed replays are compressed without losing any public events',()=>{
+test('redealt attempts stay outside the completed replay',()=>{
+  let state=createGame({seed:4,seats:allAI(),rules:{fullRebel:'scramble',pointRebelThreshold:1000}});
+  while(state.pending&&!['lead','follow'].includes(state.pending.phase)){
+    const d=state.pending,action=d.phase==='rebel'?{type:'rebel',accept:true}:safeAction(observation(state,d.seat));
+    state=applyAction(state,{seat:d.seat,version:state.version,decisionId:d.id,action});
+  }
+  state=finish(state);assert.equal(state.attempts,4);
+  const replay=decodedReplay(completedResult(state,identity).replay_json);
+  assert.equal(replay.dealEpoch,4);assert.equal(replay.deal.draws.length,100);
+  assert.ok(replay.events.every(event=>event.deal===4));assert.equal(replayTimeline(replay).at(-1).score.total,state.score.total);
+});
+test('completed replays are compressed without losing hands or events; legacy records remain readable',()=>{
   const record=completedResult(finished,identity),encoded=encodedReplay(record.replay_json);
   assert.deepEqual(decodedReplay(encoded),JSON.parse(record.replay_json));
   assert.ok(Buffer.byteLength(encoded)<Buffer.byteLength(record.replay_json)/2);
+  const legacy=JSON.stringify(JSON.parse(record.replay_json).events);
+  assert.deepEqual(decodedReplay(encodedReplay(legacy)),JSON.parse(legacy));
+  assert.throws(()=>replayTimeline(decodedReplay(legacy)),/legacy/);
+});
+
+test('private archive replays every original hand, kitty pickup, play, capture and final score in both dealing modes',()=>{
+  for(const dealing of ['ordered','continuous'])for(const seed of [1,17,80]){
+    let state=createGame({seed,seats:allAI(),dealing});
+    if(dealing==='continuous'){
+      for(let i=0;i<100;i++){
+        state=drawCard(state);
+        const seat=state.drawSeat,view=observation(state,seat),option=view.options.find(o=>o.id!=='pass');
+        if(option)state=applyBid(state,{gameId:state.id,epoch:state.attempts,seat,handCount:state.hands[seat].length,choice:option.id});
+      }
+      state=closeBidding(state);
+    }
+    let beforeBury;const afterPlays=[];
+    while(!state.score){
+      const d=state.pending;
+      if(d.phase==='bury')beforeBury=structuredClone(state.hands);
+      const action=safeAction(observation(state,d.seat));
+      state=applyAction(state,{seat:d.seat,version:state.version,decisionId:d.id,action,source:'peilian'});
+      if(action.type==='play')afterPlays.push(structuredClone(state.hands));
+      assert.equal('deal' in publicView(state,-1),false,'full recording never enters public observations');
+    }
+    const replay=decodedReplay(encodedReplay(completedResult(state,identity).replay_json)),frames=replayTimeline(replay);
+    const sorted=hands=>hands.map(hand=>hand.map(card=>typeof card==='number'?card:card.id).sort((a,b)=>a-b));
+    assert.deepEqual(sorted(frames.find(f=>f.stage==='kitty').hands),sorted(beforeBury));
+    assert.deepEqual(frames.filter(f=>f.stage==='play').map(f=>sorted(f.hands)),afterPlays.map(sorted));
+    assert.deepEqual(frames.at(-1).captured.map(h=>[...h].sort((a,b)=>a-b)),state.captured.map(h=>h.map(c=>c.id).sort((a,b)=>a-b)));
+    assert.deepEqual(frames.at(-1).score,state.score);assert.deepEqual(frames.at(-1).trump,state.trump);
+    assert.deepEqual(frames.at(-1).levels,state.match.levels);
+    assert.ok(replay.deal.hands.every(hand=>hand.length===25));assert.equal(replay.deal.draws.length,100);
+    const corrupt=structuredClone(replay);corrupt.deal.hands[0][0]=corrupt.deal.hands[1][0];
+    assert.throws(()=>replayTimeline(corrupt),/physical deck/);
+  }
 });
 function stores(){
   const local=new DatabaseSync(':memory:'),remote=new DatabaseSync(':memory:');remote.exec(readFileSync(new URL('../migrations/0001_completed_games.sql',import.meta.url),'utf8'));

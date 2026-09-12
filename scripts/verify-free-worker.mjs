@@ -116,6 +116,7 @@ try{
   assert.equal((await post('/api/start',a.cookie,a.data.csrf,{seats:Array.from({length:4},()=>({kind:'peilian',name:'Synthetic result'})),dealing:'ordered',speed:1000})).status,200);
   const completed=await post('/api/fixture-complete',a.cookie,a.data.csrf,{});assert.equal(completed.status,200);const records=await completed.json();noKeys(records);
   assert.equal(records.results.length,1);assert.equal(records.results[0].ip_address,'none');
+  assert.equal(records.results[0].replayVersion,2);assert.deepEqual(records.results[0].initialHandSizes,[25,25,25,25]);assert.ok(Number.isInteger(records.results[0].replayedScore));
   const repeated=await (await post('/api/fixture-complete',a.cookie,a.data.csrf,{})).json();assert.equal(repeated.results.length,1,'repeated completion cannot duplicate the D1 record');
   console.log('Free Worker native checks passed: personal-key lifecycle, isolated tables, WebSockets, SQLite recovery, provider routes, and a completed AI-only deal archived exactly once in local D1. No live model calls.');
 }finally{ws?.terminate();await stop();await rm(dir,{recursive:true,force:true});}
