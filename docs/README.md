@@ -21,6 +21,7 @@ Eighty 是免费开源的八十分浏览器游戏。当前版本 **0.3.0** 加�
 - [Table experience](table-experience.md): interaction, effects, sound and accessibility behavior.
 - [Security and deployment](security-and-deployment.md): sessions, credentials and hosting.
 - [Tony's website edition](site-edition.md): maintained deployment branch, Cloudflare hosting, private saves and optional sponsored AI.
+- [Completed results and capacity](completed-results.md): isolated tables, Free limits, private D1 records and IP retention.
 - [Art](art.md), [press kit](press-kit.md) and [credits](credits.md): visual system, media and provenance.
 - [Roadmap](roadmap.md), [changelog](../CHANGELOG.md) and [verification](verification.md).
 

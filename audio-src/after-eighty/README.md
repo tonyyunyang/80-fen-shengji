@@ -14,9 +14,10 @@ inputs to this renderer.
 - A separate 13-second audition contains original deal, play, tractor,
   point-collection, threshold and round-win cues.
 
-This is a listening draft. It is separate from the production soundtrack and
-the current `public/table-sound.js`; integration follows selection of the
-musical direction. Earlier audio code is preserved in the dated
+The first recording was approved by Tony and is now the source for the
+production soundtrack at `public/assets/audio/after-eighty.mp3`. The runtime
+uses `public/table-music.js`; the approved recording is unchanged. Earlier
+audio code is preserved in the dated
 `output/audio-design/before-*/` backup. No game rules or AI behavior changes.
 
 ## Reproduce

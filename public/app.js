@@ -9,6 +9,7 @@ import { trainingQuestion } from '/src/training.js';
 import { decisionTimeoutMs, MAX_DECISION_MS } from '/src/player-settings.js';
 import { DEFAULT_PREFERENCES, readPreferences } from './preferences.js';
 import { createTableSound } from './table-sound.js';
+import { createTableMusic } from './table-music.js';
 import { UI_LABELS } from './ui-labels.js';
 import { setupSeatRows } from './seat-setup.js';
 import { acceptSnapshot, isHumanTurn } from './client-state.js';
@@ -75,6 +76,19 @@ let config = {
 let appearance = { ...DEFAULT_PREFERENCES };
 let hasSavedSetup = false;
 const sound = createTableSound(() => appearance);
+function musicStatus(state) {
+  const statuses = {
+    off: ['可在这里开启，菜单与牌局之间连续播放。', 'Enable it here; the track continues between menus and play.'],
+    waiting: ['点击页面后开始播放。', 'Interact with the page to start playback.'],
+    loading: ['正在加载音乐…', 'Loading music…'],
+    playing: ['正在播放。', 'Playing.'],
+    paused: ['已暂停，回来后接着播放。', 'Paused; continues when you return.'],
+    unavailable: ['音乐暂时不可用，可重新开启再试。', 'Music is unavailable. Toggle it on again to retry.'],
+  };
+  $('musicStatus').textContent = pick('八十分之后 · 原创配乐。', 'After Eighty · Original soundtrack. ') + pick(...statuses[state]);
+}
+const music = createTableMusic(() => appearance, { getContext: sound.getContext, onStatus: musicStatus });
+sound.onUnlock(() => music.sync());
 try {
   const stored = JSON.parse(localStorage.getItem('eighty-config'));
   if (
@@ -451,6 +465,7 @@ function applyAppearance(save = false) {
     showHints: 'hints',
     dragToPlay: 'dragToPlay',
     tableSound: 'sound',
+    tableMusic: 'music',
   }))
     $(id).checked = appearance[key];
   for (const id of ['handSize', 'tableSize', 'textSize']) {
@@ -459,6 +474,14 @@ function applyAppearance(save = false) {
   }
   $('soundVolume').value = appearance.volume;
   $('soundVolume').disabled = !appearance.sound;
+  $('musicVolume').value = appearance.musicVolume;
+  $('musicVolume').disabled = !appearance.music;
+  $('soundPreview').disabled = !appearance.sound || !appearance.volume;
+  const audioOn = appearance.sound && appearance.volume > 0 || appearance.music && appearance.musicVolume > 0;
+  $('audioToggle').textContent = audioOn ? pick('♪ 静音', '♪ Mute audio') : pick('♪ 开启声音', '♪ Enable audio');
+  $('audioToggle').setAttribute('aria-pressed', String(!!audioOn));
+  sound.sync(); music.update({ muffled: viewMode !== 'game' || !!latest?.paused || !!latest?.game?.score });
+  musicStatus(music.state());
   if (save)
     try {
       localStorage.setItem('eighty-pixel-options', JSON.stringify(appearance));
@@ -1606,10 +1629,12 @@ for (const [id, key] of Object.entries({
   showHints: 'hints',
   dragToPlay: 'dragToPlay',
   tableSound: 'sound',
+  tableMusic: 'music',
 }))
   $(id).onchange = (event) => {
     appearance[key] = event.target.checked;
     applyAppearance(true);
+    if (key === 'sound' || key === 'music') sound.unlock().then(() => music.sync({ retry: true }));
   };
 for (const id of ['handSize', 'tableSize', 'textSize'])
   $(id).onchange = (event) => {
@@ -1619,6 +1644,14 @@ for (const id of ['handSize', 'tableSize', 'textSize'])
 $('soundVolume').oninput = (event) => {
   appearance.volume = Number(event.target.value);
   applyAppearance(true);
+};
+$('musicVolume').oninput = event => { appearance.musicVolume = Number(event.target.value); applyAppearance(true); };
+$('soundPreview').onclick = () => sound.preview();
+$('audioToggle').onclick = () => {
+  const enabled = appearance.sound && appearance.volume > 0 || appearance.music && appearance.musicVolume > 0;
+  appearance.sound = appearance.music = !enabled;
+  if (!enabled) { appearance.volume ||= 35; appearance.musicVolume ||= 30; }
+  applyAppearance(true); sound.unlock().then(() => music.sync({ retry: true }));
 };
 $('effectQuality').onchange = (event) => {
   appearance.effects = event.target.value;
@@ -1752,6 +1785,12 @@ try {
   status = initial.providers;
   latest = initial;
   csrfToken = initial.csrf || '';
+  if(initial.siteEdition?.results?.enabled){
+    $('resultsNotice').hidden=false;
+    const retained=initial.siteEdition.results.ipRetentionDays;
+    $('resultsNotice').textContent=pick('完成的单局会私下保存胜方、公共牌谱和匿名会话 ID；未完成的局不进入成绩库。','Completed deals privately save their winner, public replay and anonymous session ID; unfinished deals do not enter the results archive. ')+
+      (retained?pick('获取到的 IP 在 '+retained+' 天后清除。','Available IP addresses are cleared after '+retained+' days.'):pick('获取到的 IP 随牌谱保留。','Available IP addresses are retained with the replay.'));
+  }
   if(initial.capabilities?.personalConnections===false){
     $('connectionsButton').hidden=true;
     $('apiSettingsTitle').textContent=pick('网站提供的 AI','AI provided by this site');

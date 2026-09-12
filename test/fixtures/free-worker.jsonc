@@ -2,11 +2,41 @@
   "name": "eighty-free-native-fixture",
   "main": "free-worker.js",
   "compatibility_date": "2026-09-11",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": false,
-  "assets": { "directory": "../../dist/free-assets", "binding": "ASSETS", "run_worker_first": ["/", "/api/*", "/_eighty/*"], "not_found_handling": "none" },
-  "durable_objects": { "bindings": [{ "name": "GAME_TABLES", "class_name": "GameTable" }, { "name": "SPONSORED_AI", "class_name": "FixtureBroker" }] },
-  "migrations": [{ "tag": "fixture-v1", "new_sqlite_classes": ["GameTable", "FixtureBroker"] }],
+  "assets": {
+    "directory": "../../dist/free-assets",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/",
+      "/api/*",
+      "/_eighty/*"
+    ],
+    "not_found_handling": "none"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_TABLES",
+        "class_name": "GameTable"
+      },
+      {
+        "name": "SPONSORED_AI",
+        "class_name": "FixtureBroker"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "fixture-v1",
+      "new_sqlite_classes": [
+        "GameTable",
+        "FixtureBroker"
+      ]
+    }
+  ],
   "vars": {
     "EIGHTY_GATEWAY_SECRET": "fixture-signing-secret-not-a-real-credential",
     "PERSONAL_CONNECTIONS_ENABLED": "true",
@@ -17,6 +47,15 @@
     "SPONSOR_SESSION_REQUESTS": "50",
     "SPONSOR_VISITOR_REQUESTS": "50",
     "SPONSOR_MAX_OUTPUT_TOKENS": "512",
-    "EIGHTY_TABLES_PER_DAY": "100"
-  }
+    "EIGHTY_TABLES_PER_DAY": "100",
+    "RESULTS_ENABLED": "true",
+    "RESULT_IP_RETENTION_DAYS": "30"
+  },
+  "d1_databases": [
+    {
+      "binding": "GAME_RESULTS",
+      "database_name": "fixture-results",
+      "database_id": "00000000-0000-4000-8000-000000000001"
+    }
+  ]
 }

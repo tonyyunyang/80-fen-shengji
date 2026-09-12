@@ -1,7 +1,7 @@
 // Actual local Cloudflare runtime: signed cookies, private tables, WebSocket
 // transport and SQLite persistence. Upstream models are synthetic fixtures.
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {createServer} from 'node:net';
 import {tmpdir} from 'node:os';
@@ -39,6 +39,8 @@ async function openSocket(cookie){
   return{connection,messages};
 }
 try{
+  const migration=spawnSync(process.execPath,[resolve(root,'node_modules/wrangler/bin/wrangler.js'),'d1','execute','fixture-results','--local','--config','test/fixtures/free-worker.jsonc','--persist-to',dir,'--file','migrations/0001_completed_games.sql','--json'],{cwd:root,env:{PATH:process.env.PATH,WRANGLER_SEND_METRICS:'false'},encoding:'utf8'});
+  assert.equal(migration.status,0,migration.stderr);
   await start();
   const a=await newBrowser(),b=await newBrowser();
   assert.notEqual(a.cookie,b.cookie);assert.notEqual(a.data.csrf,b.data.csrf);noKeys(a.data);
@@ -111,5 +113,9 @@ try{
   assert.equal((await post('/api/pause',a.cookie,a.data.csrf,{paused:true})).status,200);
   await sleep(5400);
   const expired=await (await get('/api/state',a.cookie)).json();noKeys(expired);assert.equal(expired.connections.find(p=>p.id===personalId).active,false,'idle expiry clears only memory-held keys');
-  console.log('Free Worker native checks passed: private key lifecycle, model discovery, separate tables, WebSocket heartbeat, legal/stale actions, SQLite recovery, sponsored and personal provider routes. No live model calls.');
+  assert.equal((await post('/api/start',a.cookie,a.data.csrf,{seats:Array.from({length:4},()=>({kind:'peilian',name:'Synthetic result'})),dealing:'ordered',speed:1000})).status,200);
+  const completed=await post('/api/fixture-complete',a.cookie,a.data.csrf,{});assert.equal(completed.status,200);const records=await completed.json();noKeys(records);
+  assert.equal(records.results.length,1);assert.equal(records.results[0].ip_address,'none');
+  const repeated=await (await post('/api/fixture-complete',a.cookie,a.data.csrf,{})).json();assert.equal(repeated.results.length,1,'repeated completion cannot duplicate the D1 record');
+  console.log('Free Worker native checks passed: personal-key lifecycle, isolated tables, WebSockets, SQLite recovery, provider routes, and a completed AI-only deal archived exactly once in local D1. No live model calls.');
 }finally{ws?.terminate();await stop();await rm(dir,{recursive:true,force:true});}

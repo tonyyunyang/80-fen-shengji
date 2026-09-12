@@ -3,6 +3,7 @@ import { SponsoredAI } from '../../cloudflare/sponsored-object.js';
 import { sponsoredRequest } from '../../cloudflare/sponsor-core.js';
 import { GameTable as AuthoritativeTable } from '../../cloudflare/game-table.js';
 import {publicProviderFetch,publicAnswers} from '../../cloudflare/public-provider-fetch.js';
+import {applyAction,safeAction,observation} from '../../src/game.js';
 
 // A fixture-only checkpoint trigger exercises the privacy boundary without
 // relying on randomly dealt hands to happen to make a bot eligible to bid.
@@ -17,6 +18,13 @@ export class GameTable extends AuthoritativeTable {
     return Response.json({id:key,choices:[{message:{tool_calls:[{type:'function',function:{name:fn?.name||'declare_trump',arguments:'{"choice":"pass"}'}}]}}],usage:{prompt_tokens:10,completion_tokens:4}});
   }});}
   async fetch(request){
+    if(new URL(request.url).pathname==='/api/fixture-complete'){
+      await this.ready;this.session.stop();let state=this.session.state;
+      for(let i=0;i<500&&!state.score;i++){const d=state.pending;state=applyAction(state,{seat:d.seat,version:state.version,decisionId:d.id,action:safeAction(observation(state,d.seat)),source:'peilian'});}
+      if(!state.score)throw new Error('Fixture did not complete');
+      this.session.state=state;this.session.paused=true;this.session.save();await this.drainResults();
+      return Response.json(await this.env.GAME_RESULTS.prepare('SELECT result_id,winning_team,ip_address FROM completed_games WHERE game_id = ?').bind(state.id).all());
+    }
     if(new URL(request.url).pathname==='/api/fixture-private-checkpoint'){
       await this.ready;this.session.save(false);return Response.json({ok:true});
     }

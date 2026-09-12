@@ -104,8 +104,11 @@ export function createTableEffects({ preferences, sound, reducedMotion }) {
     // One sonic accent per state batch. The sound system is separately opt-in.
     const priority = ['result','collect','capture','declaration','trump_set','play','deal'];
     const audible = priority.map(type => cues.find(cue => cue.type === type)).find(Boolean);
-    if (audible) sound(audible.type === 'result' ? audible.winner === game.viewer % 2 || game.viewer < 0 ? 'win' : 'finish' : audible.type,
-      { points: audible.points || 0, count: audible.count || 1 });
+    // With reduced motion there is no collection animation to wait for.
+    // In animated play, score notes arrive only when the pile reaches its seat.
+    if (audible) sound(audible.type === 'result' ? audible.winner === game.viewer % 2 || game.viewer < 0 ? 'win' : 'finish' : audible.type === 'capture' && !motion ? 'collect' : audible.type,
+      { points: audible.points || 0, count: audible.count || 1,
+        milestone: game.attackPoints >= 80 && game.attackPoints - (audible.points || 0) < 80 && audible.winner % 2 !== game.dealer % 2 });
     if (!enabled) return;
     for (const cue of cues) {
       if (cue.type === 'play') {

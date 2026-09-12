@@ -115,6 +115,11 @@ this gate.
 
 ## Free limits
 
+Completed deals now have a separate private D1 archive. See
+[results and capacity](completed-results.md) for the winner/replay policy,
+anonymous browser identities, IP retention, and a 100-table local smoke test.
+The music runs locally in the browser and consumes no provider requests.
+
 As checked on September 11, 2026, Workers Free includes 100,000 dynamic requests
 per day and 10 ms of Worker CPU per invocation. SQLite Durable Objects are also
 available on Free, with their own request, active-duration and storage quotas.

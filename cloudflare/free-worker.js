@@ -1,6 +1,8 @@
 import { browserOriginAllowed } from '../server/request-origin.js';
 import { visitorIdentity,secretMatches,boundedText } from './sponsor-core.js';
 import { mintSession,readSession,cookieName,cookieHeader } from './session-cookie.js';
+import { visitorIp } from './result-record.js';
+import { pruneResultIps } from './result-archive.js';
 export { GameTable } from './game-table.js';
 export { SponsoredAI } from './sponsored-object.js';
 
@@ -42,6 +44,7 @@ export default {
     const headers=new Headers(request.headers);
     headers.delete('authorization');headers.delete('cookie');
     headers.set('x-eighty-gateway',secret);headers.set('x-eighty-session',session);headers.set('x-eighty-visitor',visitor);
+    headers.set('x-eighty-result-ip',env.RESULTS_ENABLED==='true'&&!local?visitorIp(request.headers.get('cf-connecting-ip')):'none');
     // Detach bounded JSON bodies from the incoming stream before the internal
     // hop. In particular a rejected key submission must not break the relay.
     let forwarded;
@@ -53,4 +56,5 @@ export default {
     if(!setCookie)return result;
     const withCookie=new Response(result.body,result);withCookie.headers.set('set-cookie',setCookie);return withCookie;
   },
+  async scheduled(_controller,env,ctx){ctx.waitUntil(pruneResultIps(env));},
 };

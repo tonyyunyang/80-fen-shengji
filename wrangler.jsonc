@@ -87,7 +87,9 @@
         "SPONSOR_MAX_OUTPUT_TOKENS": "512",
         "EIGHTY_TABLES_PER_DAY": "100",
         "EIGHTY_PROVIDER_DIAGNOSTICS": "false",
-        "PERSONAL_CONNECTIONS_ENABLED": "true"
+        "PERSONAL_CONNECTIONS_ENABLED": "true",
+        "RESULTS_ENABLED": "true",
+        "RESULT_IP_RETENTION_DAYS": "30"
       },
       "routes": [
         {
@@ -100,6 +102,19 @@
         "required": [
           "EIGHTY_GATEWAY_SECRET",
           "SPONSOR_ALIBABA_API_KEY"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "GAME_RESULTS",
+          "database_name": "eighty-results",
+          "database_id": "0f9f95cf-789c-4936-8d81-0113adedd6c3",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "triggers": {
+        "crons": [
+          "17 3 * * *"
         ]
       }
     }

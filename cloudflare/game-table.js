@@ -4,6 +4,8 @@ import { HumanPresence } from '../server/presence.js';
 import { TableConnections } from './table-connections.js';
 import { boundedText, secretMatches } from './sponsor-core.js';
 import { SESSION_TTL } from './session-cookie.js';
+import { ResultArchive } from './result-archive.js';
+import { visitorIp, resultRetentionDays } from './result-record.js';
 
 const response=(status,data)=>Response.json(data,{status,headers:{'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer'}});
 const randomToken=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -19,6 +21,7 @@ export class GameTable extends DurableObject {
     this.keyTimer=null;this.lastPublicActivity=Date.now();
     this.ready=ctx.blockConcurrencyWhile(async()=>{
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS game_checkpoint (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)');
+      this.results=new ResultArchive(ctx,env);this.resultIp='none';
       const row=[...ctx.storage.sql.exec('SELECT data FROM game_checkpoint WHERE id = 1')][0];
       let saved=row?JSON.parse(row.data):null;
       this.expired=!!saved&&saved.expiresAt<=Date.now();
@@ -46,6 +49,7 @@ export class GameTable extends DurableObject {
       this.session.listeners.add(()=>{this.presence.check();this.broadcast();});
       ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"type":"ping"}','{"type":"pong"}'));
     });
+    ctx.waitUntil(this.ready.then(()=>this.drainResults()));
   }
   personalFetch(){return undefined;}
   personalKeyLifetime(){return 30*60*1000;}
@@ -70,13 +74,18 @@ export class GameTable extends DurableObject {
   }
   record(){return {snapshot:this.snapshot,csrf:this.csrf,revision:this.revision,paused:this.session.paused,
     ownerId:this.ownerId,visitor:this.visitor,expiresAt:this.expiresAt,auditRows:this.auditRows,mutations:this.mutations,connections:this.connections.snapshot()};}
-  persist(){
+  persist(completedState=null){
     if(this.restoring)return;
     const data=JSON.stringify(this.record());
     try{
       if(new TextEncoder().encode(data).byteLength>1048576)throw new Error('Checkpoint limit');
-      this.ctx.storage.sql.exec('INSERT INTO game_checkpoint (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',data);
+      let queued=false;
+      this.ctx.storage.transactionSync(()=>{
+        this.ctx.storage.sql.exec('INSERT INTO game_checkpoint (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',data);
+        if(completedState)queued=this.results.enqueue(completedState,{ownerId:this.ownerId,ip:this.resultIp});
+      });
       this.lastCommitted=data;this.saveFailed=false;
+      if(queued)this.ctx.waitUntil(this.drainResults());
     }catch{
       this.saveFailed=true;this.session.stop();
       // Do not broadcast an action that failed to reach durable storage.
@@ -88,18 +97,29 @@ export class GameTable extends DurableObject {
     }
   }
   save(data,published){
+    const completedNow=!!data.state?.score&&!this.snapshot?.state?.score;
     this.snapshot=data;
     if(!this.restoring){
       // Private bidding checkpoints must not reveal model activity through
       // a public revision counter. Match the Node server's listener semantics.
       if(published)this.revision++;
-      this.persist();
+      this.persist(completedNow?data.state:null);
     }
   }
-  async touch(){this.lastPublicActivity=Date.now();this.expired=false;this.expiresAt=Date.now()+SESSION_TTL;this.keepKeysAlive();this.persist();await this.ctx.storage.setAlarm(this.expiresAt);}
+  async armAlarm(){
+    const due=this.results.nextDue(),at=Math.min(this.expired?Infinity:this.expiresAt,due??Infinity);
+    if(!Number.isFinite(at))return;
+    const target=Math.max(Date.now()+1000,at),existing=await this.ctx.storage.getAlarm();
+    // Activity may extend a checkpoint, but must not postpone an outbox retry.
+    // An earlier existing alarm can harmlessly re-check the later expiry.
+    if(existing===null||existing>target)await this.ctx.storage.setAlarm(target);
+  }
+  async drainResults(){await this.armAlarm();await this.results.flush();await this.armAlarm();}
+  async touch(){this.lastPublicActivity=Date.now();this.expired=false;this.expiresAt=Date.now()+SESSION_TTL;this.keepKeysAlive();this.persist();await this.armAlarm();}
   view(seat){return {...this.session.view(seat),connections:this.connections.list(),csrf:this.csrf,revision:this.revision,
     hosted:true,restoreAvailable:false,saveFailed:this.saveFailed,
-    siteEdition:{name:'Tony’s website edition',branch:'codex/tonytheyang-site',repository:'https://github.com/tonyyunyang/80-fen-shengji',sponsored:this.connections.profiles.length>0,hosting:'workers-free'},
+    siteEdition:{name:'Tony’s website edition',branch:'codex/tonytheyang-site',repository:'https://github.com/tonyyunyang/80-fen-shengji',sponsored:this.connections.profiles.length>0,hosting:'workers-free',
+      results:{enabled:this.results.enabled,policy:'all-completed-deals',ipRetentionDays:resultRetentionDays(this.env)}},
     capabilities:{webSocket:true,personalConnections:this.connections.enabled,personalKeyTtlMinutes:30,endgameAnalysis:false}};}
   broadcast(){
     if(this.saveFailed)return;
@@ -120,6 +140,7 @@ export class GameTable extends DurableObject {
       const owner=request.headers.get('x-eighty-session'),visitor=request.headers.get('x-eighty-visitor');
       if(!identity.test(owner||'')||!identity.test(visitor||'')||this.ownerId&&this.ownerId!==owner)return response(403,{error:'Session rejected'});
       this.ownerId=owner;this.visitor||=visitor;
+      this.resultIp=visitorIp(request.headers.get('x-eighty-result-ip'));
       await this.touch();
       const url=new URL(request.url),seat=Number(url.searchParams.get('seat')??-1),path=url.pathname;
       if(path==='/api/state'&&request.method==='GET')return response(200,this.view(seat));
@@ -194,7 +215,11 @@ export class GameTable extends DurableObject {
     if(this.expired||Date.now()>=this.expiresAt){
       clearTimeout(this.idleTimer);clearTimeout(this.keyTimer);this.connections.clearKeys();this.session.stop();this.presence.stop();
       for(const ws of this.sockets.keys())try{ws.close(1000,'Table expired');}catch{}
-      this.sockets.clear();await this.ctx.storage.deleteAll();
-    }else await this.ctx.storage.setAlarm(this.expiresAt);
+      this.sockets.clear();this.expired=true;
+      this.ctx.storage.sql.exec('DELETE FROM game_checkpoint');this.snapshot=null;
+      await this.results.flush();
+      if(this.results.nextDue()===null){await this.ctx.storage.deleteAll();return;}
+    }else await this.results.flush();
+    await this.armAlarm();
   }
 }
