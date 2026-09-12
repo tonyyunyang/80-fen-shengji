@@ -163,8 +163,8 @@ continues to use practice bots for ordinary local review.
 
 | Setting | Initial production value |
 | --- | --- |
-| Default AI | Alibaba Token Plan / `qwen3.8-flash` |
-| Other hosted text models | `qwen3.8-max`, `qwen3.7-plus`, `qwen3.7-max`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-0731`, `glm-5.2` |
+| Default AI | Alibaba Token Plan / `qwen3.8-max` |
+| Other hosted text models | `qwen3.8-flash`, `qwen3.7-plus`, `qwen3.7-max`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-0731`, `glm-5.2` |
 | Personal connections | Enabled; each visitor may provide their own public HTTPS base URL and key. |
 | Kimi Code | Disabled in the public picker: its endpoint returns HTTP 403 from Cloudflare; the private key binding is retained. |
 | Daily allowance across the site | 2,000 attempted model requests |
@@ -180,7 +180,7 @@ and redeploy so this branch remains the source of configuration.
 The eight hosted IDs match the text models returned by the authorized Token
 Plan endpoint on September 12, 2026. Image, audio, and video IDs are excluded.
 One provider profile owns this model list; the broker validates the selected
-ID against it before using the host key. Flash remains the explicit default.
+ID against it before using the host key. Max is the explicit default; Flash remains selectable.
 The same seat can instead use a personal connection, including an OpenRouter
 Chat Completions base URL. Such requests use only that visitor's key.
 

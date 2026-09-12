@@ -2,7 +2,7 @@
   <a href="README.en.md">English</a> · 简体中文
 </p>
 
-**网站定制版已上线：** [在线玩 80](https://eighty.tonytheyang.com/) — 默认 Qwen 3.8 Flash，可选 DeepSeek、GLM 等文字模型，由 Tony 提供；也支持自己的 URL 和 key。
+**网站定制版已上线：** [在线玩 80](https://eighty.tonytheyang.com/) — 默认 Qwen 3.8 Max，可选 DeepSeek、GLM 等文字模型，由 Tony 提供；也支持自己的 URL 和 key。
 
 > **个人网站定制分支：** `codex/tonytheyang-site` 负责 Tony 网站上的 Eighty
 > 部署与可选赞助 AI，继续在本仓库维护。[部署与版本管理说明](docs/site-edition.md)。

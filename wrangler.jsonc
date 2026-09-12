@@ -80,7 +80,7 @@
       "vars": {
         "EIGHTY_PUBLIC_ORIGIN": "https://eighty.tonytheyang.com",
         "SPONSORED_ENABLED": "true",
-        "SPONSOR_PROFILES": "[{\"id\":\"sponsored-alibaba\",\"name\":\"Alibaba Token Plan\",\"model\":\"qwen3.8-flash\",\"models\":[{\"id\":\"qwen3.8-flash\",\"label\":\"Qwen 3.8 Flash\"},{\"id\":\"qwen3.8-max\",\"label\":\"Qwen 3.8 Max\"},{\"id\":\"qwen3.7-plus\",\"label\":\"Qwen 3.7 Plus\"},{\"id\":\"qwen3.7-max\",\"label\":\"Qwen 3.7 Max\"},{\"id\":\"qwen3.6-flash\",\"label\":\"Qwen 3.6 Flash\"},{\"id\":\"deepseek-v4-pro\",\"label\":\"DeepSeek V4 Pro\"},{\"id\":\"deepseek-v4-flash-0731\",\"label\":\"DeepSeek V4 Flash · 0731\"},{\"id\":\"glm-5.2\",\"label\":\"GLM 5.2\"}],\"baseUrl\":\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\",\"default\":true}]",
+        "SPONSOR_PROFILES": "[{\"id\":\"sponsored-alibaba\",\"name\":\"Alibaba Token Plan\",\"model\":\"qwen3.8-max\",\"models\":[{\"id\":\"qwen3.8-flash\",\"label\":\"Qwen 3.8 Flash\"},{\"id\":\"qwen3.8-max\",\"label\":\"Qwen 3.8 Max\"},{\"id\":\"qwen3.7-plus\",\"label\":\"Qwen 3.7 Plus\"},{\"id\":\"qwen3.7-max\",\"label\":\"Qwen 3.7 Max\"},{\"id\":\"qwen3.6-flash\",\"label\":\"Qwen 3.6 Flash\"},{\"id\":\"deepseek-v4-pro\",\"label\":\"DeepSeek V4 Pro\"},{\"id\":\"deepseek-v4-flash-0731\",\"label\":\"DeepSeek V4 Flash · 0731\"},{\"id\":\"glm-5.2\",\"label\":\"GLM 5.2\"}],\"baseUrl\":\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\",\"default\":true}]",
         "SPONSOR_DAILY_REQUESTS": "2000",
         "SPONSOR_SESSION_REQUESTS": "500",
         "SPONSOR_VISITOR_REQUESTS": "500",
