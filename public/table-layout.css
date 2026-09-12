@@ -311,3 +311,140 @@ body[data-screen='game'] {
   overflow: clip;
   touch-action: none;
 }
+
+/* The same table and hand render at native touch sizes on phones. Only the
+   hand scrolls horizontally; the controls stay anchored in the viewport. */
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) {
+  --table-w: calc(54px * var(--table-scale));
+  border-radius: 10px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .game-top {
+  top: 8px;left: 10px;right: 10px;gap: 6px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .game-top button {
+  min-height: 44px;padding: 6px 10px;font-size: 13px;white-space: nowrap;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .match-tag {
+  margin-top: 5px;font-size: 11px;white-space: nowrap;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .game-tools {gap: 5px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .game-top > div:first-child {min-width: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .game-tools {flex-shrink: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-panel {
+  left: 8px;right: 8px;bottom: max(8px,env(safe-area-inset-bottom));
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand {
+  height: calc(var(--card-h) + 46px);overflow-x: auto;overflow-y: hidden;
+  touch-action: pan-x;overscroll-behavior-x: contain;scrollbar-width: thin;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-slot {touch-action: pan-x;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-footer {
+  position: relative;grid-template-columns: auto minmax(0,1fr);gap: 4px 8px;margin-top: 4px;padding-top: 6px;min-height: 0;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-info {font-size: 13px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-info small {font-size: 10px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-footer .turn-message {
+  grid-row: 1;grid-column: 1/-1;min-height: 0;font-size: 14px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-footer .turn-message small {
+  min-height: 0;max-height: 1.55em;-webkit-line-clamp: 1;font-size: 11px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-help {display: none;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-footer #resumeInline {position: absolute;right: 0;bottom: 0;min-height: 44px;margin: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-actions {min-width: 0;min-height: 0;gap: 5px;}
+.pixel-game[data-layout='phone'] .bidding-footer {grid-row: 2;grid-column: 2;min-width: 0;}
+.pixel-game[data-layout='phone'] .bid-options {flex-wrap: nowrap;justify-content: flex-start;overflow-x: auto;touch-action: pan-x;}
+.pixel-game[data-layout='phone'] .bid-options button {flex-shrink: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .hand-actions button,
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .bid-options button {min-height: 44px;padding: 7px 12px;font-size: 14px;white-space: nowrap;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .portrait {width: 34px;height: 39px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat {max-width: 100px;gap: 3px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-name {font-size: 12px;padding: 3px 5px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-role {font-size: 10px;max-width: 95px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-count {font-size: 12px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-count small {display: none;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-hand {min-height: 18px;gap: 5px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .backs {height: 18px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .backs .card-back {width: 14px;height: 19px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-history {min-height: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat-history:empty {display: none;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat.west {left: 10px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat.east {right: 10px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat.north {
+  top: 80px;max-width: 126px;grid-template-columns: 34px minmax(0,1fr);gap: 3px 5px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat.north .seat-history {position: static;grid-column: 1/-1;min-width: 0;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .seat.north .dealer {top: 26px;left: -3px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .trump-marker {
+  top: 80px;left: 10px;gap: 4px 6px;transform: none;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .trump-tile {width: 32px;height: 46px;font-size: 17px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .trump-copy {font-size: 12px;gap: 2px;max-width: 45px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .trump-copy small {font-size: 9px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .trump-marker .kitty-pocket {font-size: 9px;gap: 3px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .kitty-backs {display: none;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .score-ticket {
+  top: 80px;right: 10px;min-width: 75px;padding: 0 6px 4px;transform: none;font-size: 11px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .score-ticket .team-role {
+  margin: 0 -6px 2px;padding: 3px 6px;font-size: 11px;
+}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .score-ticket strong {font-size: 22px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .score-ticket strong small {font-size: 12px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .score-ticket > span:last-child {font-size: 9px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .play-caption {font-size: 11px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .declaration-cards .mini {width: 46px;height: 69px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .declaration-pile {font-size: 11px;gap: 4px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .burial-guide {max-width: 75%;font-size: 12px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .burial-guide p {font-size: 11px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .drop-target {left: 10%;right: 10%;font-size: 15px;}
+.pixel-game:is([data-layout='phone'],[data-layout='compact']) .table-emblem {opacity: .2;}
+.pixel-game[data-layout='compact'] {--table-w: 40px;}
+.pixel-game[data-layout='compact'] .game-top {top: 2px;}
+.pixel-game[data-layout='compact'] .game-top > div:first-child {display: flex;align-items: center;gap: 10px;}
+.pixel-game[data-layout='compact'] .match-tag {margin: 0;}
+.pixel-game[data-layout='compact'] .seat {top: 50px;flex-direction: row;max-width: 185px;}
+.pixel-game[data-layout='compact'] .seat .portrait,
+.pixel-game[data-layout='compact'] .seat-role,
+.pixel-game[data-layout='compact'] .seat-history,
+.pixel-game[data-layout='compact'] .backs {display: none;}
+.pixel-game[data-layout='compact'] .seat.north {top: 50px;left: 37.5%;display: flex;max-width: 150px;}
+.pixel-game[data-layout='compact'] .seat.west {top: 50px;left: 12.5%;transform: translateX(-50%);}
+.pixel-game[data-layout='compact'] .seat.east {top: 50px;right: 12.5%;transform: translateX(50%);}
+.pixel-game[data-layout='compact'] .trump-marker {top: 48px;left: 53%;display: flex;}
+.pixel-game[data-layout='compact'] .trump-tile {width: 23px;height: 32px;font-size: 12px;}
+.pixel-game[data-layout='compact'] .trump-copy small,
+.pixel-game[data-layout='compact'] .trump-marker .kitty-pocket {display: none;}
+.pixel-game[data-layout='compact'] .score-ticket {top: 48px;right: 24%;min-width: 0;padding: 1px 5px;}
+.pixel-game[data-layout='compact'] .score-ticket .team-role,
+.pixel-game[data-layout='compact'] .score-ticket > span,
+.pixel-game[data-layout='compact'] .score-track {display: none;}
+.pixel-game[data-layout='compact'] .score-ticket strong {font-size: 18px;}
+.pixel-game[data-layout='compact'] .played-slot.north,
+.pixel-game[data-layout='compact'] .declaration-pile.north {left: 37.5%;}
+.pixel-game[data-layout='compact'] .played-slot.south,
+.pixel-game[data-layout='compact'] .declaration-pile.south {left: 62.5%;}
+.pixel-game[data-layout='compact'] .hand {height: calc(var(--card-h) + 30px);}
+.pixel-game[data-layout='compact'] .hand-footer {grid-template-columns: auto minmax(0,1fr) auto;}
+.pixel-game[data-layout='compact'] .hand-footer .turn-message {grid-column: 2;}
+.pixel-game[data-layout='compact'] .hand-info {grid-row: 1;grid-column: 1;}
+.pixel-game[data-layout='compact'] .hand-actions {grid-row: 1;grid-column: 3;}
+.pixel-game[data-layout='compact'] .bid-options {position: absolute;right: 0;bottom: 0;}
+.pixel-game[data-layout='compact'] .burial-guide p {display: none;}
+.pixel-game[data-layout='compact'] .play-caption {font-size: 10px;}
+.pixel-game[data-layout='phone']:is([data-density='short'],[data-density='tiny']) .score-ticket > span,
+.pixel-game[data-layout='phone']:is([data-density='short'],[data-density='tiny']) .score-track {display: none;}
+.pixel-game[data-layout='phone']:is([data-density='short'],[data-density='tiny']) .seat:not(.north) .portrait {display: none;}
+.pixel-game[data-layout='phone'][data-density='tiny'] {--table-w: 34px;}
+.pixel-game[data-layout='phone'][data-density='tiny'] .seat.north .seat-role {display: none;}
+.pixel-game[data-layout='phone'][data-density='tiny'] .seat.north .portrait {width: 26px;height: 30px;}
+.pixel-game[data-layout='phone'][data-density='tiny'] .hand {height: calc(var(--card-h) + 26px);}
+.pixel-game[data-layout='phone'][data-density='tiny'] .hand-info {font-size: 11px;}
+.pixel-game[data-layout='phone'][data-density='tiny'] .hand-actions button {padding: 7px 10px;}
+@media (max-height: 740px) {
+  .pixel-game[data-layout='phone'] {--table-w: calc(42px * var(--table-scale));}
+  .pixel-game[data-layout='phone'] .hand {height: calc(var(--card-h) + 40px);}
+}
+@media (max-width: 1050px) {
+  body[data-screen='game'] {padding: max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left));}
+}

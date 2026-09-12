@@ -50,7 +50,7 @@ export function tokenPlanRequestOptions(id, maxOutput, toolName, thinking = fals
   };
 }
 
-// Kimi Code documents `none` as its non-thinking route (currently K2.6).
+// Kimi Code documents `none` as disabling thinking; the model alias can evolve.
 // Scope this to the actual managed endpoint; never guess flags for other hosts.
 export function kimiCodeRequestOptions(id, baseUrl, maxOutput, thinking = false, toolName) {
   let url;

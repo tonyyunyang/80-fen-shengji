@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eighty-tonytheyang",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [{ "pattern": "eighty.tonytheyang.com", "custom_domain": true }],
+  "containers": [{ "class_name": "EightyContainer", "image": "./Dockerfile", "max_instances": 1, "instance_type": "basic" }],
+  "durable_objects": { "bindings": [
+    { "name": "EIGHTY_CONTAINER", "class_name": "EightyContainer" },
+    { "name": "SPONSORED_AI", "class_name": "SponsoredAI" }
+  ] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["EightyContainer", "SponsoredAI"] }],
+  "r2_buckets": [{ "binding": "EIGHTY_SAVES", "bucket_name": "eighty-site-saves" }],
+  "vars": {
+    "EIGHTY_PUBLIC_ORIGIN": "https://eighty.tonytheyang.com",
+    "SPONSORED_ENABLED": "false",
+    "SPONSOR_PROFILES": "[]",
+    "SPONSOR_DAILY_REQUESTS": "0",
+    "SPONSOR_SESSION_REQUESTS": "0",
+    "SPONSOR_VISITOR_REQUESTS": "0",
+    "SPONSOR_MAX_OUTPUT_TOKENS": "512"
+  },
+  "observability": { "enabled": false }
+}

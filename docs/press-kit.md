@@ -4,20 +4,23 @@
 
 **免费开源的经典中国八十分，一张有手感、有光影的像素牌桌。**
 
+**[Play online / 在线试玩 →](https://eighty.tonytheyang.com/)** · [Source / 源码](https://github.com/tonyyunyang/80-fen-shengji)
+
 ## Facts
 
 | | |
 | --- | --- |
 | Name | Eighty · 八十分 |
-| Current version | 0.3.0 · Arcade table and group play · September 10, 2026 |
+| Latest tagged release | 0.3.0 · September 10, 2026; `main` and the hosted game include subsequent improvements |
 | Genre | Partnership trick-taking; Shanghai 80-fen / Shengji / Tractor |
 | Play | Four seats, two teams; local bots, shared-device humans or optional API models |
-| Platform | Desktop browser, with a Node.js 22+ server |
+| Platform | Desktop and phone browsers; hosted on Cloudflare, or run locally with Node.js 22+ |
 | Price | Free local play; external AI services are optional and may charge separately |
 | License | Apache-2.0, with retained third-party notices |
 | Creator | Tony Yun Yang and contributors |
 | Repository | https://github.com/tonyyunyang/80-fen-shengji |
-| Online rooms / hosted demo | Not available in this version |
+| Play online | [eighty.tonytheyang.com](https://eighty.tonytheyang.com/) |
+| Online rooms | Cross-device rooms are not implemented |
 
 ## Short description
 
@@ -27,9 +30,9 @@
 
 ## Ready-to-share copy
 
-**English:** A classic card night, now in motion. Eighty 0.3 is a free, open-source browser game of Chinese 80-fen / Shengji: select a tractor, drag the group, and watch the points come home. Flowing pixel effects and optional paper/chime sounds surround the same partnership game. Local practice bots need no key or subscription. Play, star the repo, or send a PR; reviews happen periodically. https://github.com/tonyyunyang/80-fen-shengji
+**English:** Two decks, four seats, one good partner. Eighty brings Chinese 80-fen / Shengji to desktop and phone browsers with pixel cards, group dragging and original music. Play with hosted AI, free practice bots or your own model. **[Play now](https://eighty.tonytheyang.com/)** · [Fork or contribute](https://github.com/tonyyunyang/80-fen-shengji)
 
-**中文：** 把八十分搬上一张会回应你的像素牌桌。Eighty 0.3 免费、开源：选好拖拉机整组拖出，看着火花收分，和对家一起赢下一局。光影强度、动态效果与纸牌音效都能自己选。本地陪练无需 key 或订阅。欢迎试玩、Star、分享给牌友与提交 PR；维护者会不定期审核。https://github.com/tonyyunyang/80-fen-shengji
+**中文：** 两副牌，四个座位，一位好搭档。电脑或手机打开 Eighty，就能在有像素牌面、整组拖牌和原创音乐的牌桌上打一局。可选网站提供的 AI、免费陪练或自己的模型。**[直接开桌](https://eighty.tonytheyang.com/)** · [源码与贡献](https://github.com/tonyyunyang/80-fen-shengji)
 
 ## Media
 

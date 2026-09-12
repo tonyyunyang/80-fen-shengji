@@ -1,4 +1,8 @@
-import { analyzeEndgame } from './analysis-worker.js';
+// Node's optional threaded analysis is loaded only when requested. The
+// Cloudflare Free adapter uses the same model/rules path with this optional
+// feature disabled, so its bundle does not import node:worker_threads.
+let analysisModule;
+const loadAnalysis = () => analysisModule ||= import(new URL('./analysis-worker.js', import.meta.url).href);
 import { buildExpertFacts, EXPERT_FACTS_PROMPT } from './expert-facts.js';
 import { expertPrompt } from './expert-prompt.js';
 import { createHash } from 'node:crypto';
@@ -217,7 +221,7 @@ export async function requestAction(view, seat, options = {}) {
     const args = moves?.length ? { move_id: match } : action.type === 'declare' ? { choice: action.choice } : action.type === 'rebel' ? { accept: action.accept } : { card_ids: action.cardIds };
     return { action: parseToolCall(tool.name, args, view.phase, moves), usage: { input: 0, output: 0, cached: 0, cacheWrite: 0 }, ms: performance.now() - started, simulated: true };
   }
-  if (options.contextProfile?.startsWith('expert-search-')) options = {...options,endgameAnalysis:await analyzeEndgame(view,followMoves(view),options.signal,options.contextProfile==='expert-search-wide-zh'?{samples:32,maxMs:2500}:undefined)};
+  if (options.contextProfile?.startsWith('expert-search-')) options = {...options,endgameAnalysis:await (await loadAnalysis()).analyzeEndgame(view,followMoves(view),options.signal,options.contextProfile==='expert-search-wide-zh'?{samples:32,maxMs:2500}:undefined)};
   const request = buildRequest(view, seat, options);
   const secrets = Object.entries(options.env || process.env).filter(([key]) => key.endsWith('API_KEY')).map(([, value]) => value);
   const body = JSON.stringify(request.body);
@@ -238,6 +242,17 @@ export async function requestAction(view, seat, options = {}) {
       method: 'POST', headers: request.headers, body, signal: options.signal, redirect: 'error',
     });
     metadata.httpStatus = response.status ?? (response.ok ? 200 : null);
+    const providerResult = response.headers?.get?.('x-eighty-provider-result');
+    if (['redirect','non-json','http-error','timeout','transport'].includes(providerResult)) {
+      metadata.providerResult = providerResult;
+      for (const [header,field,pattern] of [
+        ['x-eighty-provider-status','providerStatus',/^[1-5]\d\d$/],
+        ['x-eighty-provider-code','providerCode',/^1\d{3}$/],
+      ]) {
+        const value = response.headers?.get?.(header);
+        if (pattern.test(value || '')) metadata[field] = Number(value);
+      }
+    }
     metadata.headersMs = performance.now() - started;
     metadata.requestId = response.headers?.get?.('x-request-id') || response.headers?.get?.('x-dashscope-request-id') || null;
     metadata.billingHeaders = Object.fromEntries((response.headers?.entries ? [...response.headers.entries()] : [])

@@ -2,6 +2,11 @@
   <a href="README.en.md">English</a> · 简体中文
 </p>
 
+<p align="center">
+  <strong><a href="https://eighty.tonytheyang.com/">▶ 在线试玩 80 · 无需安装</a></strong><br>
+  电脑或手机打开即玩。可选网站提供的 AI、免费陪练，或自己的模型。
+</p>
+
 ![八十分 · Eighty 0.3 — 流动光影与像素牌桌](docs/media/arcade-menu-zh.png)
 
 <h1 align="center">八十分 · Eighty</h1>
@@ -16,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="#开始游戏">开始游戏</a> · <a href="docs/guide.md">怎么玩</a> · <a href="CONTRIBUTING.md">一起改进</a> · <a href="docs/press-kit.md">图片与宣传素材</a>
+  <a href="https://eighty.tonytheyang.com/">在线试玩</a> · <a href="#开始游戏">本地运行</a> · <a href="docs/guide.md">怎么玩</a> · <a href="CONTRIBUTING.md">一起改进</a> · <a href="docs/press-kit.md">图片与宣传素材</a>
 </p>
 
 两副牌，四个人，两对搭档。有人调主，有人跑分，有人默默为最后一墩留下一张王牌。
@@ -40,8 +45,8 @@
 | **真正的搭档牌戏** | 你与对家一队，左右两家是对手；攻守身份、庄家、主牌与攻方得分都摆在桌上。 |
 | **完整的一局，也有下一局** | 发牌、亮主与反主、拿底扣底、对子、拖拉机、甩牌、抠底计分与升级，一路打过 A。 |
 | **手牌有手感** | 25 张与拿底后的 33 张都保持一排。悬停平滑展开，单击选中；拖动任一已选牌即可整组出牌，未选牌单独拖出。也可按「出牌」确认。 |
-| **像素画面，清楚读牌** | 自绘标题、像素人物、人头牌、黑白／彩色大小王，以及可选的四色花色。整桌随窗口缩放。 |
-| **出牌有回应，收分有声色** | 流动背景、牌面微光、方向落牌、亮主与收墩提示、得分火花和结算揭晓。特效可选华丽／柔和／关闭，纸牌与得分音效可单独开启。 |
+| **像素画面，清楚读牌** | 自绘标题、像素人物、人头牌、黑白／彩色大小王，以及可选的四色花色。电脑整桌缩放；手机保留大牌，左右滑动查看，点选或向上拖出，按钮保持可见。 |
+| **出牌有回应，收分有声色** | 流动背景、牌面微光、方向落牌、亮主与收墩提示、得分火花和结算揭晓。原创背景音乐《After Eighty》与发牌、出牌、收墩、得分音效可独立开启和调节。 |
 | **想学就慢慢学** | 记牌簿、一墩回看、边玩边学、键盘操作、减少动态效果与可选音效。 |
 | **每席都能自己安排** | 人类、本地陪练、自己的 API 模型自由搭配；支持同设备轮流操作与观战。 |
 
@@ -57,7 +62,9 @@
 
 ## 开始游戏
 
-先安装 [Node.js 22 或更新版本](https://nodejs.org/)，然后：
+**直接玩：[打开线上牌桌 →](https://eighty.tonytheyang.com/)** 无需安装或提交自己的 API key，网站提供的 AI 在可用额度内由 Tony 提供，也可以随时选择免费陪练或自己的模型。
+
+想在自己的电脑运行，先安装 [Node.js 22 或更新版本](https://nodejs.org/)，然后：
 
 ```sh
 git clone https://github.com/tonyyunyang/80-fen-shengji.git
@@ -72,7 +79,7 @@ npm start
 
 想让牌桌安静一些，可在「光影与特效」选择「柔和」或「关闭」，也可关闭「动态效果」；系统的减少动态效果设置同样生效。音效默认关闭，开启后可独立调整音量。
 
-这是**单设备牌桌**，主要为电脑浏览器设计；目前没有跨设备联机房间。项目没有官方在线试玩站点，上面的地址是你启动后的本机游戏。需要部署自己的实例，请看[部署指南](docs/security-and-deployment.md)。
+电脑和手机均可游玩。这是**单设备牌桌**，目前没有跨设备联机房间；不同浏览器会话拥有独立牌桌。上面的 `127.0.0.1` 地址用于本地运行，公开试玩请使用 [eighty.tonytheyang.com](https://eighty.tonytheyang.com/)。需要部署自己的实例，请看[部署指南](docs/security-and-deployment.md)。
 
 已经安装过？先停止正在运行的服务，然后更新并重启：
 
@@ -113,6 +120,8 @@ npm run check
 ```
 
 日常检查全部离线，不消耗模型额度。唯一游戏入口是 `public/index.html`。
+
+`main` 包含最新游戏改进、音乐、手机操作和可选 Cloudflare 运行时代码；本地 `npm start` 默认使用陪练和自己的 API 连接。长期保留的 [`codex/tonytheyang-site`](https://github.com/tonyyunyang/80-fen-shengji/tree/codex/tonytheyang-site) 是线上生产部署分支，定期合入 `main`，使用明确的 `production` 配置与 Worker Secrets。[分支与部署说明](docs/site-edition.md)。
 
 [文档导航](docs/README.md) · [规则细则](docs/rules.zh-CN.md) · [架构](docs/architecture.md) · [美术与媒体](docs/art.md) · [路线图](docs/roadmap.md) · [更新记录](CHANGELOG.md)
 

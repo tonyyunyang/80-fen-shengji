@@ -56,7 +56,7 @@ export class Session {
   save(broadcast = true) {
     if (broadcast && !this.paused && isBidding(this.state)) this.bidding.ensure();
     this.persist({ schemaVersion: 3, state: this.state, stats: this.stats, config: this.config, logs: this.logs,
-      publishedStats: this.publishedStats, publishedLogs: this.publishedLogs, dealClock: this.bidding.checkpoint(), pauseReason: this.pauseReason, archives: this.archives });
+      publishedStats: this.publishedStats, publishedLogs: this.publishedLogs, dealClock: this.bidding.checkpoint(), pauseReason: this.pauseReason, archives: this.archives }, broadcast);
     if (broadcast) for (const listener of this.listeners) listener();
   }
   start(config) {

@@ -1,0 +1,122 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eighty-tonytheyang",
+  "main": "cloudflare/free-worker.js",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "eighty.tonytheyang.com",
+      "custom_domain": true
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_TABLES",
+        "class_name": "GameTable"
+      },
+      {
+        "name": "SPONSORED_AI",
+        "class_name": "SponsoredAI"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "GameTable",
+        "SponsoredAI"
+      ]
+    }
+  ],
+  "vars": {
+    "EIGHTY_PUBLIC_ORIGIN": "https://eighty.tonytheyang.com",
+    "SPONSORED_ENABLED": "false",
+    "SPONSOR_PROFILES": "[]",
+    "SPONSOR_DAILY_REQUESTS": "0",
+    "SPONSOR_SESSION_REQUESTS": "0",
+    "SPONSOR_VISITOR_REQUESTS": "0",
+    "SPONSOR_MAX_OUTPUT_TOKENS": "512",
+    "EIGHTY_TABLES_PER_DAY": "100"
+  },
+  "observability": {
+    "enabled": false
+  },
+  "assets": {
+    "directory": "./dist/free-assets",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/",
+      "/index.html",
+      "/api/*",
+      "/_eighty/*"
+    ],
+    "not_found_handling": "none"
+  },
+  "build": {
+    "command": "node scripts/build-worker-assets.mjs"
+  },
+  "env": {
+    "production": {
+      "name": "eighty-tonytheyang",
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "GAME_TABLES",
+            "class_name": "GameTable"
+          },
+          {
+            "name": "SPONSORED_AI",
+            "class_name": "SponsoredAI"
+          }
+        ]
+      },
+      "vars": {
+        "EIGHTY_PUBLIC_ORIGIN": "https://eighty.tonytheyang.com",
+        "SPONSORED_ENABLED": "true",
+        "SPONSOR_PROFILES": "[{\"id\":\"sponsored-alibaba\",\"name\":\"Alibaba Token Plan\",\"model\":\"qwen3.8-max\",\"models\":[{\"id\":\"qwen3.8-flash\",\"label\":\"Qwen 3.8 Flash\"},{\"id\":\"qwen3.8-max\",\"label\":\"Qwen 3.8 Max\"},{\"id\":\"qwen3.7-plus\",\"label\":\"Qwen 3.7 Plus\"},{\"id\":\"qwen3.7-max\",\"label\":\"Qwen 3.7 Max\"},{\"id\":\"qwen3.6-flash\",\"label\":\"Qwen 3.6 Flash\"},{\"id\":\"deepseek-v4-pro\",\"label\":\"DeepSeek V4 Pro\"},{\"id\":\"deepseek-v4-flash-0731\",\"label\":\"DeepSeek V4 Flash · 0731\"},{\"id\":\"glm-5.2\",\"label\":\"GLM 5.2\"}],\"baseUrl\":\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\",\"default\":true}]",
+        "SPONSOR_DAILY_REQUESTS": "2000",
+        "SPONSOR_SESSION_REQUESTS": "500",
+        "SPONSOR_VISITOR_REQUESTS": "500",
+        "SPONSOR_MAX_OUTPUT_TOKENS": "512",
+        "EIGHTY_TABLES_PER_DAY": "100",
+        "EIGHTY_PROVIDER_DIAGNOSTICS": "false",
+        "PERSONAL_CONNECTIONS_ENABLED": "true",
+        "RESULTS_ENABLED": "true",
+        "RESULT_IP_RETENTION_DAYS": "30"
+      },
+      "routes": [
+        {
+          "pattern": "eighty.tonytheyang.com",
+          "custom_domain": true
+        }
+      ],
+      "workers_dev": false,
+      "secrets": {
+        "required": [
+          "EIGHTY_GATEWAY_SECRET",
+          "SPONSOR_ALIBABA_API_KEY"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "GAME_RESULTS",
+          "database_name": "eighty-results",
+          "database_id": "0f9f95cf-789c-4936-8d81-0113adedd6c3",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "triggers": {
+        "crons": [
+          "17 3 * * *"
+        ]
+      }
+    }
+  }
+}

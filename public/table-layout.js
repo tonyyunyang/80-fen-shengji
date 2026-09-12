@@ -1,8 +1,16 @@
 // Positions share the same measured hand and card space. A larger preference
 // may grow a short table; it never pushes a played card into the hover area.
 export function tableLayout({ width, height, northBottom, sideEdge, sideHeight, hudBottom,
-  handHeight, handBottom, cardWidth, captionHeight, narrow = false }) {
-  const gap = narrow ? 12 : 18;
+  handHeight, handBottom, cardWidth, captionHeight, narrow = false, compact = false, dense = false }) {
+  if (compact) {
+    const pileHeight = cardWidth * 1.5 + captionHeight + 6;
+    const northTop = Math.max(northBottom, hudBottom) + 6;
+    const minimumHeight = northTop + pileHeight + 6 + handHeight + handBottom;
+    const tableHeight = Math.max(height,minimumHeight),handTop=tableHeight-handHeight-handBottom;
+    return {minimumHeight,height:tableHeight,handTop,pileHeight,maxFanWidth:(width-60)/4,
+      northTop,southTop:northTop,sideTop:northTop,sideSeatTop:44,west:width*.125,east:width*.875};
+  }
+  const gap = narrow ? dense ? 8 : 12 : 18;
   const pileHeight = cardWidth * 1.5 + captionHeight + 12;
   const maxFanWidth = Math.max(cardWidth, (width - (narrow ? 0 : sideEdge * 2) - gap * 4) / 3);
   const northTop = northBottom + gap;

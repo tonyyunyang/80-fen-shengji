@@ -1,6 +1,6 @@
 import {readFile,readdir,stat} from 'node:fs/promises';
 import {resolve,dirname,relative,sep} from 'node:path';
-const root=resolve(import.meta.dirname,'..'),skip=new Set(['.git','.codex','.playwright-cli','node_modules','output','data','.public-release']);
+const root=resolve(import.meta.dirname,'..'),skip=new Set(['.git','.codex','.playwright-cli','.wrangler','node_modules','output','data','dist','.public-release']);
 async function markdown(dir){const result=[];for(const entry of await readdir(dir,{withFileTypes:true})){if(skip.has(entry.name))continue;const p=resolve(dir,entry.name);if(entry.isDirectory())result.push(...await markdown(p));else if(entry.name.endsWith('.md'))result.push(p);}return result;}
 const withoutCode=s=>s.replace(/```[\s\S]*?```/g,'');
 function anchors(text){const result=new Set(),seen=new Map();for(const match of withoutCode(text).matchAll(/^#{1,6}\s+(.+)$/gm)){let slug=match[1].replace(/<[^>]*>/g,'').toLowerCase().replace(/[^\p{L}\p{N}_\- ]/gu,'').trim().replace(/ /g,'-');const n=seen.get(slug)||0;seen.set(slug,n+1);result.add(slug+(n?'-'+n:''));}for(const match of text.matchAll(/\bid=["']([^"']+)["']/g))result.add(match[1]);return result;}

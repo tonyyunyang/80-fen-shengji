@@ -1,0 +1,14 @@
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!public
+!public/**
+!src
+!src/**
+!server
+!server/**
+!vendor
+!vendor/**
+!LICENSE
+!NOTICE
