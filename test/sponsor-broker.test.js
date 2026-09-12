@@ -85,3 +85,16 @@ test('JSON-escaped provider credentials are redacted before metadata reaches the
   assert.equal(response.status,200);
   const data=await response.json();assert.equal(data.id,'[redacted]');assert.equal(data.choices[0].message.content,'[redacted]');
 });
+test('non-JSON provider errors retain safe status diagnostics without exposing their body',async()=>{
+  const response=await sponsoredRequest(request(),env,memoryStorage(),async()=>new Response('<html>error code: 1042 '+key+'</html>',{status:403,headers:{'content-type':'text/html'}}));
+  assert.equal(response.status,403);
+  assert.equal(response.headers.get('x-eighty-provider-status'),'403');
+  assert.equal(response.headers.get('x-eighty-provider-result'),'non-json');
+  assert.equal(response.headers.get('x-eighty-provider-code'),'1042');
+  const text=await response.text();assert.equal(text.includes(key),false);assert.equal(text.includes('<html>'),false);
+});
+test('transport failures expose only a fixed category',async()=>{
+  const response=await sponsoredRequest(request(),env,memoryStorage(),async()=>{throw new Error('network '+key);});
+  assert.equal(response.status,502);assert.equal(response.headers.get('x-eighty-provider-result'),'transport');
+  assert.equal((await response.text()).includes(key),false);
+});

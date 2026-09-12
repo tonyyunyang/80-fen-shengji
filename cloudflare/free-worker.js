@@ -21,6 +21,9 @@ export default {
     if(!browserOriginAllowed({method:request.method,pathname:url.pathname,origin:request.headers.get('origin'),expectedOrigin:url.origin,
       site:request.headers.get('sec-fetch-site'),mode:request.headers.get('sec-fetch-mode'),destination:request.headers.get('sec-fetch-dest')}))return json(403,{error:'Origin rejected'});
     if(url.pathname==='/api/health'&&request.method==='GET')return json(200,{ready:true,hosting:'workers-free'});
+    // This edition never accepts personal API credentials. Reject these
+    // requests before forwarding their body to a table or touching storage.
+    if(url.pathname.startsWith('/api/connections/'))return json(403,{error:'本版本使用网站提供的连接，无需提交个人 key'});
     const secret=env.EIGHTY_GATEWAY_SECRET;
     if(typeof secret!=='string'||secret.length<32)return json(503,{error:'Configure the private session secret'});
     const raw=(request.headers.get('cookie')||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName(url)+'='))?.slice(cookieName(url).length+1);

@@ -15,7 +15,7 @@ const ENDPOINTS = new Set([
 const KEY_NAMES = new Set(['SPONSOR_ALIBABA_API_KEY', 'SPONSOR_KIMI_API_KEY']);
 const idPattern = /^sponsored-[a-z0-9-]{1,40}$/;
 const identityPattern = /^[a-f0-9]{64}$/;
-const reply = (status, data) => Response.json(data, { status, headers: { 'cache-control': 'no-store' } });
+const reply = (status, data, headers = {}) => Response.json(data, { status, headers: { 'cache-control': 'no-store', ...headers } });
 function redact(value,secrets){
   if(typeof value==='string'){for(const secret of secrets)value=value.split(secret).join('[redacted]');return value;}
   if(Array.isArray(value))return value.map(item=>redact(item,secrets));
@@ -130,14 +130,30 @@ export async function sponsoredRequest(request, env, storage, fetchImpl = fetch,
   try {
     const upstream = await fetchImpl(profile.baseUrl + '/chat/completions', { method: 'POST', redirect: 'manual', signal: controller.signal,
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[profile.keySecret], 'user-agent': 'Eighty-Website/0.3.0 (tonytheyang.com)' }, body: JSON.stringify(payload) });
-    if (upstream.status >= 300 && upstream.status < 400) return reply(502, { error: { message: 'Provider redirect rejected' } });
+    const diagnostic = kind => ({ 'x-eighty-provider-status': String(upstream.status), 'x-eighty-provider-result': kind });
+    if (upstream.status >= 300 && upstream.status < 400) return reply(502, { error: { message: 'Provider redirect rejected' } }, diagnostic('redirect'));
     const raw = await boundedText(upstream.body, 1048576);
     // Redact after JSON decoding, so escaped Unicode cannot conceal an
     // echoed key inside provider IDs, errors, usage metadata or tool content.
-    const data = redact(JSON.parse(raw), [...KEY_NAMES].map(key=>env[key]).filter(Boolean));
+    let data;
+    try { data = redact(JSON.parse(raw), [...KEY_NAMES].map(key=>env[key]).filter(Boolean)); }
+    catch {
+      // Gateways may return an HTML error. Keep only its status and a numeric
+      // Cloudflare error code; neither raw HTML nor provider headers are logged.
+      const code = raw.match(/error code:\s*(1\d{3})\b/i)?.[1];
+      return reply(upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
+        { error: { message: 'Sponsored provider returned an unexpected response' } },
+        { ...diagnostic('non-json'), ...(code ? { 'x-eighty-provider-code': code } : {}) });
+    }
     if (!upstream.ok) return reply(upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
-      { error: { message: 'Sponsored provider request failed' }, ...(data.usage ? { usage: data.usage } : {}) });
+      { error: { message: 'Sponsored provider request failed' }, ...(data.usage ? { usage: data.usage } : {}) }, diagnostic('http-error'));
     return reply(200, data);
-  } catch { return reply(502, { error: { message: 'Sponsored provider unavailable' } }); }
+  } catch (error) {
+    const code = String(error?.message || '').match(/(?:error\s+code\s*[:=]?\s*|Cloudflare error\s*)(1\d{3})\b/i)?.[1];
+    return reply(502, { error: { message: 'Sponsored provider unavailable' } }, {
+      'x-eighty-provider-result': controller.signal.aborted ? 'timeout' : 'transport',
+      ...(code ? { 'x-eighty-provider-code': code } : {}),
+    });
+  }
   finally { clearTimeout(timer); request.signal.removeEventListener('abort', abort); }
 }

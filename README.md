@@ -2,9 +2,11 @@
   <a href="README.en.md">English</a> · 简体中文
 </p>
 
+**网站定制版已上线：** [在线玩 80](https://eighty.tonytheyang.com/) — Qwen AI 由 Tony 提供，无需填写 key。
+
 > **个人网站定制分支：** `codex/tonytheyang-site` 负责 Tony 网站上的 Eighty
 > 部署与可选赞助 AI，继续在本仓库维护。[部署与版本管理说明](docs/site-edition.md)。
-> 当前配置默认关闭付费模型；创建这些文件并不代表在线服务已经发布。
+> 本地预览默认使用陪练；线上 production 环境已开启 Tony 提供的 Qwen AI。
 > 默认部署现已适配 **Cloudflare Workers Free + SQLite Durable Objects**，
 > 不需要容器或 R2；本地预览用 `npm run dev:free`。
 

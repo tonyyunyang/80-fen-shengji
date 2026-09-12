@@ -23,7 +23,7 @@ Keep `codex/tonytheyang-site` as a maintained, long-lived branch in
 Develop general game improvements for `main`, then merge the reviewed `main`
 into this branch. Keep website-specific changes here. Do not delete this
 branch as part of routine merged-feature cleanup. The intended public origin
-is `https://eighty.tonytheyang.com/`; no service is published by editing these files.
+is live at `https://eighty.tonytheyang.com/` as of September 12, 2026.
 
 ## Why Secrets do not need a container
 
@@ -98,8 +98,9 @@ allowances retain the existing practice fallback and its separate provenance.
 These are request caps, not a guaranteed currency ceiling. No live inference
 is authorized merely by running tests or possessing a saved key.
 
-Sponsorship ships **off**, with zero configured request budgets. The game can
-still be played with free practice bots. The default admission limit is 100
+The base local-review configuration keeps sponsorship **off**, with zero
+request budgets. Production uses the explicit profile below. The game can
+also be played with free practice bots. The default admission limit is 100
 new browser tables per day, with per-visitor creation limits; an existing valid
 cookie continues to select its table. Cookies cannot be invented to bypass
 this gate.
@@ -155,7 +156,7 @@ continues to use practice bots for ordinary local review.
 | Setting | Initial production value |
 | --- | --- |
 | Default AI | Alibaba Token Plan / `qwen3.8-flash` |
-| Additional AI | Kimi Code / `kimi-for-coding` |
+| Kimi Code | Disabled in the public picker: its endpoint returns HTTP 403 from Cloudflare; the private key binding is retained. |
 | Daily allowance across the site | 2,000 attempted model requests |
 | Daily allowance per visitor and table | 500 attempted model requests |
 | Maximum output per call | 512 tokens |
@@ -166,9 +167,10 @@ are enforced by the existing durable broker; exhausted allowances use the
 existing practice fallback. Change these values in `env.production.vars`
 and redeploy so this branch remains the source of configuration.
 
-The production environment requires three Worker Secrets:
-`EIGHTY_GATEWAY_SECRET`, `SPONSOR_ALIBABA_API_KEY`, and
-`SPONSOR_KIMI_API_KEY`. The gateway value must be random and at least 32
+The active production environment requires `EIGHTY_GATEWAY_SECRET` and
+`SPONSOR_ALIBABA_API_KEY` as Worker Secrets. `SPONSOR_KIMI_API_KEY` is also
+stored privately, but its profile is disabled until a live Cloudflare test
+succeeds. The gateway value must be random and at least 32
 characters. Keep an existing gateway secret across ordinary deployments to
 preserve signed sessions. Profiles contain only the secret binding names.
 
@@ -180,7 +182,7 @@ npm run deploy:production:check
 npm run deploy:production -- --secrets-file output/cloudflare-production/secrets.json
 ```
 
-The first deployment's JSON file contains the three named bindings and lives
+The first deployment's JSON file contains the private bindings and lives
 in ignored, mode-0600 local storage. It is passed directly to Wrangler;
 it is not part of the asset build, repository, browser bundle, or logs.
 For a worker that already has these secrets, subsequent code deployments use
@@ -205,5 +207,20 @@ connection adapter, sponsored broker and action parser: Qwen and Kimi each
 returned a valid declaration action in about two seconds, without fallback.
 This is connectivity and protocol verification, not a playing-strength claim
 or a Cloudflare production verification. Private results are kept in ignored
-`output/cloudflare-production/`. Cloudflare account authorization and the
-remote deployment checks remain necessary before calling the service live.
+`output/cloudflare-production/`. Cloudflare deployment is now live. The custom domain serves HTTPS, the
+account remains on Workers Free, and all three key bindings are `secret_text`.
+Live checks verified signed session isolation, CSRF/origin rejection, private
+paths returning 404, hibernating WebSocket heartbeats, and a valid Qwen action
+through the deployed controller and broker. The test tables were paused.
+
+Kimi succeeds from the local backend but repeatedly returns a non-JSON HTTP
+403 from Cloudflare, including with documented public-Internet fetch routing.
+It is therefore excluded from active `SPONSOR_PROFILES`; its secret remains
+stored for a future authorized endpoint/access fix. No client identity or
+network restriction is bypassed. Re-enable the Kimi profile only after a
+bounded live game action succeeds from the deployed Worker.
+
+The broker preserves sanitized upstream status/category and numeric Cloudflare
+error codes in audit metadata; provider error bodies and private keys are not
+logged. `global_fetch_strictly_public` makes outbound provider requests use
+normal public-Internet routing; table and broker calls remain internal bindings.

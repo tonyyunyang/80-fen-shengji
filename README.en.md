@@ -2,10 +2,12 @@
   English · <a href="README.md">简体中文</a>
 </p>
 
+**Website edition is live:** [Play 80 online](https://eighty.tonytheyang.com/) — Qwen AI is provided by Tony; no personal key is needed.
+
 > **Website edition:** `codex/tonytheyang-site` maintains Tony's hosted Eighty
 > deployment and optional sponsored AI in this repository.
-> [Hosting and version ownership](docs/site-edition.md). Sponsorship is off
-> by default; these deployment files do not mean a live service has been published.
+> [Hosting and version ownership](docs/site-edition.md). Local previews use
+> practice bots by default; the production environment enables sponsored Qwen AI.
 > The default uses **Workers Free-compatible SQLite Durable Objects**, with
 > no container or R2 requirement. Preview it with `npm run dev:free`.
 

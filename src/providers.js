@@ -242,6 +242,17 @@ export async function requestAction(view, seat, options = {}) {
       method: 'POST', headers: request.headers, body, signal: options.signal, redirect: 'error',
     });
     metadata.httpStatus = response.status ?? (response.ok ? 200 : null);
+    const providerResult = response.headers?.get?.('x-eighty-provider-result');
+    if (['redirect','non-json','http-error','timeout','transport'].includes(providerResult)) {
+      metadata.providerResult = providerResult;
+      for (const [header,field,pattern] of [
+        ['x-eighty-provider-status','providerStatus',/^[1-5]\d\d$/],
+        ['x-eighty-provider-code','providerCode',/^1\d{3}$/],
+      ]) {
+        const value = response.headers?.get?.(header);
+        if (pattern.test(value || '')) metadata[field] = Number(value);
+      }
+    }
     metadata.headersMs = performance.now() - started;
     metadata.requestId = response.headers?.get?.('x-request-id') || response.headers?.get?.('x-dashscope-request-id') || null;
     metadata.billingHeaders = Object.fromEntries((response.headers?.entries ? [...response.headers.entries()] : [])
