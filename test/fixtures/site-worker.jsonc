@@ -1,0 +1,21 @@
+{
+  "name": "eighty-offline-site-fixture",
+  "main": "site-worker.js",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "durable_objects": { "bindings": [{ "name": "SPONSORED_AI", "class_name": "FixtureSponsoredAI" }, { "name": "EIGHTY_CONTAINER", "class_name": "FixtureContainer" }] },
+  "migrations": [{ "tag": "fixture-v1", "new_sqlite_classes": ["FixtureSponsoredAI", "FixtureContainer"] }],
+  "r2_buckets": [{ "binding": "EIGHTY_SAVES", "bucket_name": "eighty-local-fixture-only" }],
+  "vars": {
+    "EIGHTY_PUBLIC_ORIGIN": "https://game.example.com",
+    "EIGHTY_GATEWAY_SECRET": "fixture-gateway-secret-with-more-than-32-characters",
+    "SPONSOR_ALIBABA_API_KEY": "fixture-provider-key-not-a-live-credential",
+    "SPONSORED_ENABLED": "true",
+    "SPONSOR_PROFILES": "[{\"id\":\"sponsored-alibaba\",\"name\":\"Fixture only\",\"model\":\"fixture-model\",\"baseUrl\":\"https://dashscope-intl.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\"}]",
+    "SPONSOR_DAILY_REQUESTS": "3",
+    "SPONSOR_SESSION_REQUESTS": "2",
+    "SPONSOR_VISITOR_REQUESTS": "2",
+    "SPONSOR_MAX_OUTPUT_TOKENS": "512"
+  }
+}

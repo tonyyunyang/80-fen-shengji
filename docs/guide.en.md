@@ -2,6 +2,8 @@
 
 [简体中文](guide.md) · [Project home](../README.en.md) · [Full rules](rules.md)
 
+**[Play online now →](https://eighty.tonytheyang.com/)** No installation required. The hosted game offers provided models; local play defaults to three practice bots.
+
 Your partner is the opposite seat; the players to your left and right are opponents. Two decks give 108 cards: 25 per player and eight in the kitty. Fives score five points; tens and kings score ten; other cards score zero.
 
 The dealer's partnership defends. The other team attacks. **Attackers take over at a final total of 80 or more; defenders must keep them below 80.** The score ticket always displays attacker points, so it shows your opponents' points when you defend.
@@ -26,6 +28,8 @@ Multiple humans can share one device, with a privacy curtain between hands. This
 | Input | Result |
 | --- | --- |
 | Hover over the hand | Smoothly open a reading gap. The hand always stays in one row. |
+| Swipe sideways on a phone | Browse larger cards without selecting or submitting them; controls stay on screen. |
+| Tap, then confirm or drag upward | Select cards, then use Play or an upward drag. Burial still needs button confirmation. |
 | Click | Select or unselect; selected cards lift in your hand. |
 | Drag an unselected card onto the table | Carry only that card. A legal single plays immediately; an incompatible drop returns it. |
 | Select a group, then drag any selected card | Carry the entire selection. A legal drop plays the group; an invalid drop returns every card to its own slot and keeps the selection. |
@@ -47,6 +51,8 @@ Turn off **Drag to play** in General settings if you prefer dragging only to sel
 In **Settings → Light & effects**, choose **Full** for flowing ink, card glints and scoring sparks, **Soft** for quieter accents, or **Off** for a static backdrop. The separate **Animation** switch makes the table still; your system's reduced-motion setting is also respected. **Retro screen texture** controls the scanlines. **Table sounds** adds paper taps and short scoring chimes after your next interaction; it is off by default, with an independent volume control.
 
 Trick stamps show who won and the actual points in that trick. Only attacker captures advance the score ticket toward 80. The round reveal counts up visually; the final total and kitty calculation still determine the result.
+
+**Background music** plays the original After Eighty recording, with its own switch and volume. Playback retains its position across pauses and page visibility changes.
 
 ## Continue or start again
 

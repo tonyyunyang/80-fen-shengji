@@ -14,15 +14,15 @@ Not yet. This version provides one table per browser session, with local bots, A
 
 ### Is there a hosted demo? / 有在线试玩吗？
 
-There is no official public demo at present. Follow the README to run locally, or host your own Node server behind HTTPS. GitHub Pages alone cannot run the server.
+Yes: **[Play 80 online](https://eighty.tonytheyang.com/)**. The Cloudflare deployment offers hosted AI, practice bots and your own URL/key connections. Local Node hosting and the optional Workers runtime are also available; GitHub Pages alone cannot run the server.
 
-目前请本地运行或自行部署；本项目需要 Node 服务端，不能只上传静态文件到 GitHub Pages。
+可以直接 **[在线玩 80](https://eighty.tonytheyang.com/)**，选择网站提供的 AI、陪练或自己的模型。也可本地运行 Node 服务或自行部署 Workers；只上传静态文件到 GitHub Pages 无法运行牌局。
 
 ### Which devices work best? / 适合什么设备？
 
-A modern desktop browser is the main target. The table scales to the window and keeps all controls visible. Very narrow screens make the whole scene smaller; phones are not the primary experience. Chromium is used for the published captures and browser checks.
+Desktop browsers keep the fitted table and hover controls. Phones use larger cards in one horizontally scrolling row, fixed controls, tap selection and upward dragging. Portrait and short landscape layouts are checked at narrow viewport sizes, including the dealer's 33-card hand. Chromium is used for captures and browser checks.
 
-主要面向电脑浏览器。窄窗口会缩小整桌；手机并非主要体验目标。
+电脑可悬停看牌；手机保留一排大牌，左右滑动查看，点选后确认或向上拖出。已检查手机竖屏、横屏及庄家 33 张手牌时的控件位置。
 
 ### Can I turn down the effects? / 能减少特效吗？
 
@@ -32,9 +32,9 @@ Use **Settings → Light & effects**: Full shows the flowing background, foil an
 
 ### Why is there no sound? / 为什么没有声音？
 
-Table sounds are off by default. Enable them in Settings, adjust the volume, then interact with the page to unlock browser audio. Paper taps, declaration notes, capture chimes and round-result phrases are synthesized locally. There is no background music or downloaded audio pack.
+Music and table sounds are off by default. Enable them from the menu or Settings, then interact with the page to unlock browser audio. The original After Eighty recording loops in the browser; paper, declaration, play, capture and scoring effects are synthesized locally. Music and effects have separate switches and volumes.
 
-音效默认关闭。在设置中开启「牌桌音效」、调整音量，再操作一次页面即可启用。纸牌、亮主、收墩和结算声音在本地合成，目前没有背景音乐。
+音乐和音效默认关闭，可在菜单或设置里开启。原创背景音乐《After Eighty》在浏览器中循环播放；发牌、亮主、出牌、收墩和结算音效在本地合成。音乐与音效可分别开关和调节音量。
 
 ### Why are there 33 cards? / 为什么拿到 33 张？
 
@@ -44,9 +44,9 @@ The dealer takes the eight-card kitty after receiving 25 cards, then buries eigh
 
 ### Where is my save? / 存档在哪里？
 
-Saves live in ignored server-side `data/`, selected by the browser's cookie. Keep that cookie to reconnect. A server restart restores a table paused. Keys are held only in the session's server memory and must be entered again after restart or session expiry.
+Local Node saves live in ignored server-side `data/`. The Cloudflare edition uses private SQLite checkpoints and archives completed deals in D1; unfinished deals do not enter the results archive. Both select the table through the browser's cookie. Keep that cookie to reconnect. A restart restores a table paused; personal keys stay only in server memory and must be entered again after restart or expiry. See [completed results](completed-results.md).
 
-存档在服务端 `data/`；需要原浏览器 cookie 才能重新连接。重启后牌局暂停恢复，API key 不会从存档恢复。
+本地 Node 版的存档在服务端 `data/`；Cloudflare 版使用私有 SQLite 存档，已完成单局另外存入 D1，未完成局不进入成绩库。两种方式都依靠原浏览器 cookie 找回牌桌；重启后暂停恢复，个人 API key 不会从存档恢复。
 
 ### How strong is the AI? / AI 有多强？
 

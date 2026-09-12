@@ -7,6 +7,9 @@ output/
 .playwright-cli/
 data/
 coverage/
+.wrangler/
+.dev.vars*
+dist/
 
 # Local credentials, certificates and diagnostics
 *.pem

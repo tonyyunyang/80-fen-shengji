@@ -93,6 +93,8 @@ export function createHandHover(root, {
   onFrame = null,
 } = {}) {
   const document = root.ownerDocument, window = document.defaultView;
+  const hoverLift=()=>typeof lift==='function'?lift():lift;
+  const selectionLift=()=>typeof selectedLift==='function'?selectedLift():selectedLift;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   let entries = [], rows = [], active = null, pointer = null, keyboard = false, bounds = null;
   let frame = 0, previousTime = null, frozen = false, disposed = false, dirty = true, sceneScale = 1;
@@ -125,7 +127,7 @@ export function createHandHover(root, {
       const rect = element.getBoundingClientRect(), old = previous.get(element), face = visual(element);
       metrics.layoutReads++;
       return { element, face, id: identity(element), left: rect.left, top: rect.top, width: rect.width, height: rect.height,
-        x: old?.x ?? 0, y: old?.y ?? (selected(element) ? -selectedLift : 0), angle: old?.angle ?? 0,
+        x: old?.x ?? 0, y: old?.y ?? (selected(element) ? -selectionLift() : 0), angle: old?.angle ?? 0,
         faceWidth: spread && face ? face.offsetWidth * sceneScale : rect.width };
     });
     rows = makeHoverRows(entries);
@@ -138,7 +140,7 @@ export function createHandHover(root, {
     // Picking follows the stable target fan, not a moving DOM rectangle. The
     // newly active card contains the old boundary, so repeated events cannot
     // alternate cards as the fan opens. Clicking a revealed face selects it.
-    return pickHover(spread?spreadHoverRows(rows,active):rows, x, y, active, { lift: (lift + 12) * sceneScale });
+    return pickHover(spread?spreadHoverRows(rows,active):rows, x, y, active, { lift: (hoverLift() + 12) * sceneScale });
   }
   function tick(time) {
     frame = 0;
@@ -156,7 +158,7 @@ export function createHandHover(root, {
       // Both neighbours meet at nearly the same height before ownership changes.
       const distance = index >= 0 ? index - active.coordinate : Infinity;
       const weight = allowed && active && index >= 0 ? Math.exp(-distance * distance / .62) : 0;
-      const targetY = -Math.max(selected(entry.element) ? selectedLift : 0, weight * lift);
+      const targetY = -Math.max(selected(entry.element) ? selectionLift() : 0, weight * hoverLift());
       // Open a reading gap around the pointer. Only the painted faces spread;
       // ownership remains on fixed resting strips, never animated rectangles.
       const targetX = spread && allowed && active && index >= 0 ? spreadOffset(activeRow,index,active.index) / sceneScale : 0;

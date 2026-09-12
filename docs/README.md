@@ -1,6 +1,6 @@
 # 文档 · Documentation
 
-Eighty 是免费开源的八十分浏览器游戏。当前版本 **0.3.0** 加入整组拖牌与街机风格光影特效。The **0.3.0** release combines group dragging with an animated pixel table; the approved table remains the only runtime interface.
+Eighty 是免费开源的八十分浏览器游戏。**[在线试玩 / Play online](https://eighty.tonytheyang.com/)**。`main` 包含最新手机操作、原创音乐和可选 Cloudflare 运行时；历史版本见 [GitHub Releases](https://github.com/tonyyunyang/80-fen-shengji/releases)。The shared pixel table remains the only runtime interface, on desktop and phone.
 
 ## 开始玩 / Start playing
 
@@ -20,6 +20,8 @@ Eighty 是免费开源的八十分浏览器游戏。当前版本 **0.3.0** 加�
 - [AI](ai.md) and [evaluation](research/ai-evaluation.md): current strategy, optional connections and evidence limits.
 - [Table experience](table-experience.md): interaction, effects, sound and accessibility behavior.
 - [Security and deployment](security-and-deployment.md): sessions, credentials and hosting.
+- [Tony's website edition](site-edition.md): maintained deployment branch, Cloudflare hosting, private saves and optional sponsored AI.
+- [Completed results and capacity](completed-results.md): isolated tables, Free limits, private D1 records and IP retention.
 - [Art](art.md), [press kit](press-kit.md) and [credits](credits.md): visual system, media and provenance.
 - [Roadmap](roadmap.md), [changelog](../CHANGELOG.md) and [verification](verification.md).
 

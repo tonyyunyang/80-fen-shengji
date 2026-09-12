@@ -2,6 +2,11 @@
   English · <a href="README.md">简体中文</a>
 </p>
 
+<p align="center">
+  <strong><a href="https://eighty.tonytheyang.com/">▶ Play 80 online · No installation</a></strong><br>
+  Play on desktop or phone with hosted AI, free practice bots, or your own models.
+</p>
+
 ![Eighty 0.3 — Flowing ink and a pixel card table](docs/media/arcade-menu-en.png)
 
 <h1 align="center">Eighty · 八十分</h1>
@@ -16,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="#start-a-table">Start playing</a> · <a href="docs/guide.en.md">How to play</a> · <a href="CONTRIBUTING.en.md">Contribute</a> · <a href="docs/press-kit.md">Screenshots & press kit</a>
+  <a href="https://eighty.tonytheyang.com/">Play online</a> · <a href="#start-a-table">Run locally</a> · <a href="docs/guide.en.md">How to play</a> · <a href="CONTRIBUTING.en.md">Contribute</a> · <a href="docs/press-kit.md">Screenshots & press kit</a>
 </p>
 
 Two decks. Four seats. Two partnerships. Someone draws trump, someone brings home the points, and someone saves just the right card for the final trick.
@@ -40,8 +45,8 @@ Two decks. Four seats. Two partnerships. Someone draws trump, someone brings hom
 | **A true partnership game** | You and the opposite seat share a team. Your opponents sit to the left and right; roles, dealer, trump and attacker points are visible on the table. |
 | **A whole deal—and the next one** | Dealing, declarations and counters, kitty pickup and burial, pairs, tractors, throws, final-trick scoring and progression beyond Ace. |
 | **Cards that feel good to handle** | Both 25-card and 33-card hands stay in one row. Hover opens a reading gap; click selects. Drag any selected card to play the group, or an unselected card to play it alone. The Play button works too. |
-| **Pixel character, readable cards** | Original title lettering, pixel portraits, illustrated court cards, monochrome/color jokers and an optional four-color deck. The complete table fits your window. |
-| **A table that responds** | Flowing ink, foil glints, directional card landings, declaration and capture accents, scoring sparks and a round reveal. Choose Full/Soft/Off effects and opt into paper taps and scoring chimes. |
+| **Pixel character, readable cards** | Original title lettering, pixel portraits, illustrated court cards, monochrome/color jokers and an optional four-color deck. Desktop tables scale to fit; phones keep larger cards, horizontal hand browsing and reachable controls. Tap to select or drag upward to play. |
+| **A table that responds** | Flowing ink, foil glints, directional card landings, declaration and capture accents, scoring sparks and a round reveal. Original background music, After Eighty, and deal/play/capture/scoring effects have separate switches and volume controls. |
 | **Room to learn** | A card notebook, trick review, optional learning prompts, keyboard controls, reduced motion and optional sound. |
 | **Your choice of company** | Mix humans, local practice bots and your own API models by seat. Shared-device hotseat and spectator play are supported. |
 
@@ -57,7 +62,9 @@ These are the cards rendered by the game itself: separate rank indices, suit gly
 
 ## Start a table
 
-Install [Node.js 22 or newer](https://nodejs.org/), then:
+**Play now: [Open the hosted table →](https://eighty.tonytheyang.com/)** No installation or personal API key is required. Tony provides hosted AI within the available allowance; free practice bots and your own models are also available.
+
+To run on your own computer, install [Node.js 22 or newer](https://nodejs.org/), then:
 
 ```sh
 git clone https://github.com/tonyyunyang/80-fen-shengji.git
@@ -72,7 +79,7 @@ The default is you and three local practice bots. Setup lists **You, Teammate, L
 
 For a quieter table, set **Light & effects** to **Soft** or **Off**, or turn off **Animation**. System reduced motion is respected. Sound is off by default and has its own volume control.
 
-This is a **single-device table**, designed primarily for desktop browsers. Cross-device online rooms are not available yet. There is no official hosted demo; the address above is your local game after starting the server. To host your own instance, read the [deployment guide](docs/security-and-deployment.md).
+Desktop and phone browsers are supported. This is a **single-device table**; cross-device rooms are not available. Separate browser sessions own separate tables. The `127.0.0.1` address above runs locally; the public game is at [eighty.tonytheyang.com](https://eighty.tonytheyang.com/). To host your own instance, read the [deployment guide](docs/security-and-deployment.md).
 
 Already installed? Stop the running server, then update and restart:
 
@@ -113,6 +120,8 @@ npm run check
 ```
 
 Routine checks run offline and spend no model credits. `public/index.html` is the only game entry point.
+
+`main` contains the latest game improvements, music, mobile controls and optional Cloudflare runtime. Local `npm start` defaults to practice bots and personal API connections. The maintained [`codex/tonytheyang-site`](https://github.com/tonyyunyang/80-fen-shengji/tree/codex/tonytheyang-site) branch is the production deployment channel: it receives `main` updates and uses the explicit `production` configuration with Worker Secrets. See [branch and deployment ownership](docs/site-edition.md).
 
 [Documentation](docs/README.md) · [Rules](docs/rules.md) · [Architecture](docs/architecture.md) · [Art & media](docs/art.md) · [Roadmap](docs/roadmap.md) · [Changelog](CHANGELOG.md)
 

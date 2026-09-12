@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Merge the website branch's shared improvements into `main`, while retaining `codex/tonytheyang-site` as the production deployment channel.
+- Play online at **[eighty.tonytheyang.com](https://eighty.tonytheyang.com/)**. Add direct links to the bilingual READMEs, player guides and repository/release metadata.
+- Keep larger, horizontally scrollable phone hands with reachable controls in portrait and short landscape; horizontal swipes do not select or play, and upward drags retain move validation.
+- Add the original After Eighty soundtrack, independent music/effect controls, and expanded deal/play/capture/scoring sounds.
+- Add optional Workers Free hosting with isolated SQLite tables, hibernating WebSockets, private host secrets, supported hosted text models and visitors' own API connections.
+- Archive only completed deals in optional private D1 storage, including all four initial hands, kitty, plays, trump, level and settlement. Preserve retries, idempotence, legacy replay decoding and IP retention.
+- Harden provider-response redaction and diagnostics; preserve the normal Node/BYOK path, private observations and optional Node-only endgame analysis.
+
 - Identify setup seats as You, Teammate, Left opponent and Right opponent, grouped by partnership with table positions. Keep the seat diagram, menu summary and API connection hints consistent, including shared-device and spectator setups.
 - Reject stale browser snapshots from another viewing seat; scope counters to the server session so reconnecting can accept a restored save. Human play controls require ownership of the displayed hand.
 - Cancel a held group when viewport geometry changes, including a release that arrives before the resize event, without submitting cards or losing the selection.

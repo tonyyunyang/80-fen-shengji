@@ -5,7 +5,7 @@
 <div id="notice" class="notice" role="status" hidden></div>
 <main>
 <section id="mainMenu" class="screen menu-screen" aria-label="主菜单">
-  <div class="menu-table" aria-hidden="true"></div><label class="menu-language language-picker"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 2v3M5 5c0 6 4 10 8 11M13 5c0 6-4 10-10 12M14 21l4-11 4 11M15.5 17h5"/></svg><select id="languageSelect" aria-label="语言 / Language"><option value="zh">中文</option><option value="en">English</option></select></label><div class="menu-layout"><div class="menu-copy"><p class="eyebrow">SHANGHAI · PARTNERSHIP CARD GAME</p><h1 id="menuTitle">八十分</h1><p id="menuTagline" class="tagline">一副好牌，一位好搭档。</p><nav class="menu-actions" aria-label="游戏菜单"><button class="primary" id="continueGame" hidden>继续游戏</button><button class="primary" id="menuStart" disabled>开始游戏</button><button class="secondary" id="rulesButton">玩法规则</button><button class="secondary" id="settingsButton">设置</button><button class="secondary" id="creditsButton">制作与鸣谢</button></nav><p id="menuSummary" class="menu-summary"></p><p id="resumeSummary" class="fine"></p></div><div id="menuArt" class="menu-art" aria-hidden="true"></div></div><footer class="menu-footer"><span id="connectionLabel">正在连接</span><span>108 CARDS · 4 SEATS · 2 TEAMS</span></footer>
+  <div class="menu-table" aria-hidden="true"></div><label class="menu-language language-picker"><svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h12M9 2v3M5 5c0 6 4 10 8 11M13 5c0 6-4 10-10 12M14 21l4-11 4 11M15.5 17h5"/></svg><select id="languageSelect" aria-label="语言 / Language"><option value="zh">中文</option><option value="en">English</option></select></label><div class="menu-layout"><div class="menu-copy"><p class="eyebrow">SHANGHAI · PARTNERSHIP CARD GAME</p><h1 id="menuTitle">八十分</h1><p id="menuTagline" class="tagline">一副好牌，一位好搭档。</p><nav class="menu-actions" aria-label="游戏菜单"><button class="primary" id="continueGame" hidden>继续游戏</button><button class="primary" id="menuStart" disabled>开始游戏</button><button class="secondary" id="rulesButton">玩法规则</button><button class="secondary" id="settingsButton">设置</button><button class="secondary" id="creditsButton">制作与鸣谢</button></nav><p id="menuSummary" class="menu-summary"></p><p id="resumeSummary" class="fine"></p></div><div id="menuArt" class="menu-art" aria-hidden="true"></div></div><footer class="menu-footer"><span id="connectionLabel">正在连接</span><button class="quiet audio-toggle" id="audioToggle" aria-pressed="false">♪ 开启声音</button><span>108 CARDS · 4 SEATS · 2 TEAMS</span></footer>
 </section>
 <section id="settingsView" class="screen settings-screen" aria-label="通用设置" hidden>
   <header class="page-heading"><button class="secondary" id="settingsBack">← 主菜单</button><h1 id="settingsTitle">通用设置</h1></header>
@@ -25,7 +25,10 @@
       <label class="option-row"><span id="dragPlayLabel">拖动出牌</span><input id="dragToPlay" type="checkbox" checked></label><p id="dragPlayHelp" class="fine"></p>
       <label class="option-row"><span id="hintsLabel">操作提示</span><input id="showHints" type="checkbox" checked></label>
       <label class="option-row"><span id="soundLabel">牌桌音效</span><input id="tableSound" type="checkbox"></label>
-      <label class="option-row"><span id="volumeLabel">音量</span><input id="soundVolume" type="range" min="0" max="100" value="35"></label>
+      <label class="option-row"><span id="volumeLabel">音效音量</span><input id="soundVolume" type="range" min="0" max="100" value="35"></label>
+      <label class="option-row"><span id="musicLabel">背景音乐</span><input id="tableMusic" type="checkbox"></label>
+      <label class="option-row"><span id="musicVolumeLabel">音乐音量</span><input id="musicVolume" type="range" min="0" max="100" value="30"></label>
+      <p id="musicStatus" class="fine" role="status"></p><button class="secondary" id="soundPreview">试听牌桌音效</button>
       <p id="handLayoutHelp" class="fine"></p><h2 id="learnSettingsTitle">边玩边学</h2><p id="learnSettingsHelp" class="fine"></p>
       <button class="quiet" id="resetPreferences">恢复默认偏好</button>
     </section>
@@ -34,6 +37,7 @@
 <section id="newGameView" class="screen settings-screen setup-screen" aria-label="新游戏" hidden>
   <header class="page-heading"><button class="secondary" id="setupBack">← 主菜单</button><div><span class="eyebrow" id="setupEyebrow">NEW TABLE</span><h1 id="newGameTitle">准备入座</h1></div></header>
   <p id="setupScope" class="muted"></p>
+  <p id="resultsNotice" class="fine" hidden></p>
   <div class="settings-layout"><section id="setupPanel"><h2 id="seatSettingsTitle">四席入座</h2><div id="setup"></div></section>
     <aside class="settings-side"><section class="settings-card"><h2 id="partnershipTitle">隔桌是搭档</h2><div class="setup-compass" aria-hidden="true"><span class="compass-north">队友（对家）</span><span class="compass-west">上家对手</span><b>↕ ↔</b><span class="compass-east">下家对手</span><span class="compass-south">你</span></div><p id="setupPerspective" class="fine"></p><p id="partnershipHelp" class="fine"></p></section>
       <section class="settings-card"><h2 id="apiSettingsTitle">自己的 API</h2><p id="apiSettingsHelp" class="fine"></p><button class="secondary" id="connectionsButton">API 连接 <span id="apiConnectionCount"></span></button><button class="quiet" id="settingsUsage">用量记录</button></section>

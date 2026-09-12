@@ -1,8 +1,6 @@
-import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { randomSource } from './cards.js';
-const require = createRequire(import.meta.url);
-const bot = require('../vendor/peilian/reference-core.cjs');
+import bot from '../vendor/peilian/reference-core.cjs';
 
 export function choosePeilian(view, decisionId = '', { deterministic = false } = {}) {
   // Copy observations: the original policy attaches private working fields to its input.

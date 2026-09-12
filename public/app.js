@@ -9,6 +9,7 @@ import { trainingQuestion } from '/src/training.js';
 import { decisionTimeoutMs, MAX_DECISION_MS } from '/src/player-settings.js';
 import { DEFAULT_PREFERENCES, readPreferences } from './preferences.js';
 import { createTableSound } from './table-sound.js';
+import { createTableMusic } from './table-music.js';
 import { UI_LABELS } from './ui-labels.js';
 import { setupSeatRows } from './seat-setup.js';
 import { acceptSnapshot, isHumanTurn } from './client-state.js';
@@ -73,14 +74,28 @@ let config = {
   speed: 600,
 };
 let appearance = { ...DEFAULT_PREFERENCES };
+let hasSavedSetup = false;
 const sound = createTableSound(() => appearance);
+function musicStatus(state) {
+  const statuses = {
+    off: ['可在这里开启，菜单与牌局之间连续播放。', 'Enable it here; the track continues between menus and play.'],
+    waiting: ['点击页面后开始播放。', 'Interact with the page to start playback.'],
+    loading: ['正在加载音乐…', 'Loading music…'],
+    playing: ['正在播放。', 'Playing.'],
+    paused: ['已暂停，回来后接着播放。', 'Paused; continues when you return.'],
+    unavailable: ['音乐暂时不可用，可重新开启再试。', 'Music is unavailable. Toggle it on again to retry.'],
+  };
+  $('musicStatus').textContent = pick('八十分之后 · 原创配乐。', 'After Eighty · Original soundtrack. ') + pick(...statuses[state]);
+}
+const music = createTableMusic(() => appearance, { getContext: sound.getContext, onStatus: musicStatus });
+sound.onUnlock(() => music.sync());
 try {
   const stored = JSON.parse(localStorage.getItem('eighty-config'));
   if (
     stored?.seats?.length === 4 &&
     stored.seats.every((seat) => seat && ['human', 'api', 'peilian'].includes(seat.kind))
   )
-    config = { ...config, ...stored };
+    { config = { ...config, ...stored }; hasSavedSetup = true; }
   const options = JSON.parse(localStorage.getItem('eighty-pixel-options'));
   appearance = readPreferences(options);
 } catch {}
@@ -108,6 +123,7 @@ let status = { mock: true, openai: false, claude: false, qwen: false },
   selected = new Set(),
   lastDecision = null,
   noticeTimer;
+let socketHeartbeat=null, socketPresence=null, reconnectTimer=null;
 let quiz = null,
   quizKey = null,
   quizSelection = new Set(),
@@ -218,7 +234,7 @@ function renderSetup() {
           option('peilian', t('陪练 · 本地策略'), seat.kind) +
           option('api', t('API 模型'), seat.kind) +
           '</select></div>' +
-          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || [], label + ' · ' + hint) : '') +
+          (seat.kind === 'api' ? apiSeatFields(seat, index, latest?.connections || [], label + ' · ' + hint, latest?.capabilities) : '') +
           '</div>'
         );
       })
@@ -361,10 +377,11 @@ function renderSetup() {
     storeConfig();
   };
   $('apiPreset').onclick = () => {
-    const profile = latest?.connections?.[0];
+    const profile = latest?.connections?.find(p => p.sponsored && p.default) || latest?.connections?.[0];
     config.seats = defaultSeats().map((seat, index) =>
       index
-        ? { ...seat, kind: 'api', provider: profile?.provider || 'qwen', connectionId: profile?.id, model: '' }
+        ? { ...seat, kind: 'api', provider: profile?.provider || 'qwen', connectionId: profile?.id,
+            model: profile?.sponsored ? profile.models[0].id : '', ...(profile?.sponsored ? { endgameAnalysis: false } : {}) }
         : seat,
     );
     storeConfig();
@@ -448,6 +465,7 @@ function applyAppearance(save = false) {
     showHints: 'hints',
     dragToPlay: 'dragToPlay',
     tableSound: 'sound',
+    tableMusic: 'music',
   }))
     $(id).checked = appearance[key];
   for (const id of ['handSize', 'tableSize', 'textSize']) {
@@ -456,6 +474,14 @@ function applyAppearance(save = false) {
   }
   $('soundVolume').value = appearance.volume;
   $('soundVolume').disabled = !appearance.sound;
+  $('musicVolume').value = appearance.musicVolume;
+  $('musicVolume').disabled = !appearance.music;
+  $('soundPreview').disabled = !appearance.sound || !appearance.volume;
+  const audioOn = appearance.sound && appearance.volume > 0 || appearance.music && appearance.musicVolume > 0;
+  $('audioToggle').textContent = audioOn ? pick('♪ 静音', '♪ Mute audio') : pick('♪ 开启声音', '♪ Enable audio');
+  $('audioToggle').setAttribute('aria-pressed', String(!!audioOn));
+  sound.sync(); music.update({ muffled: viewMode !== 'game' || !!latest?.paused || !!latest?.game?.score });
+  musicStatus(music.state());
   if (save)
     try {
       localStorage.setItem('eighty-pixel-options', JSON.stringify(appearance));
@@ -480,7 +506,7 @@ function renderMenu() {
     ? pick('已保留当前对局，可继续或另开一桌。', 'Your current game is saved. Continue it or start a new table.')
     : pick('点击新游戏，安排四个座位，一起上桌。', 'Choose New game, arrange four seats, and take your place.');
   $('connectionLabel').textContent = connected
-    ? pick('● 本地牌桌已连接', '● Local table connected')
+    ? (latest?.siteEdition ? pick('● 牌桌已连接', '● Table connected') : pick('● 本地牌桌已连接', '● Local table connected'))
     : pick('○ 正在连接牌桌…', '○ Connecting to the table…');
 }
 async function startMatch(confirmed = false) {
@@ -562,6 +588,11 @@ async function pauseGame() {
 }
 function presence() {
   if (!csrfToken) return;
+  if(latest?.capabilities?.webSocket){
+    const visible=viewMode==='game'&&!document.hidden;
+    if(stream?.readyState===1&&socketPresence!==visible){stream.send(JSON.stringify({type:'presence',visible}));socketPresence=visible;}
+    return;
+  }
   fetch('/api/presence', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-eighty-csrf': csrfToken },
@@ -614,32 +645,47 @@ async function refreshState() {
   return next;
 }
 function connect() {
+  clearTimeout(reconnectTimer);reconnecting=false;
+  clearInterval(socketHeartbeat);socketHeartbeat=null;socketPresence=null;
   stream?.close();
   connected = false;
-  const connection = new EventSource(
-    '/api/events?seat=' + viewer + '&client=' + clientId + '&visible=' + (viewMode === 'game' && !document.hidden),
-  );
+  const useSocket=latest?.capabilities?.webSocket===true;
+  const visible=viewMode==='game'&&!document.hidden;
+  const path='/api/events?seat='+viewer+'&client='+clientId+'&visible='+visible;
+  const connection=useSocket?new WebSocket(location.origin.replace(/^http/,'ws')+path):new EventSource(path);
   stream = connection;
+  if(useSocket){
+    socketPresence=visible;
+    connection.onopen=()=>{
+      if(stream!==connection)return;
+      socketHeartbeat=setInterval(()=>{if(stream===connection&&connection.readyState===1)connection.send('{"type":"ping"}');},25000);
+    };
+    connection.onclose=()=>{if(stream===connection){clearInterval(socketHeartbeat);connection.onerror();}};
+  }
   connection.onmessage = (event) => {
-    if (stream !== connection) return;
+    if (stream !== connection || connection.readyState>1) return;
+    const data=JSON.parse(event.data);
+    if(data.type==='pong')return;
+    clearTimeout(reconnectTimer);reconnecting=false;
     const reconnect = !connected;
     connected = true;
-    receive(JSON.parse(event.data));
+    receive(data);
     if (reconnect) presence();
   };
-  connection.onerror = async () => {
+  connection.onerror = () => {
     if (stream !== connection) return;
     connected = false;
     render();
     if (!reconnecting) {
       reconnecting = true;
-      try {
-        await refreshState();
-        if (stream === connection) connect();
-      } catch {
-      } finally {
-        reconnecting = false;
-      }
+      clearInterval(socketHeartbeat);connection.close();
+      let delay=1500;
+      const retry=async()=>{
+        if(stream!==connection)return;
+        try{await refreshState();if(stream===connection)connect();}
+        catch{if(stream===connection){delay=Math.min(30000,delay*2);reconnectTimer=setTimeout(retry,delay);}}
+      };
+      reconnectTimer=setTimeout(retry,delay);
     }
   };
 }
@@ -662,6 +708,7 @@ function handCard(card, enabled, game) {
   return `<button class="hand-slot" data-live-style data-trump="${!!trump}" data-recalled="${Date.now() - (recalled.get(card.id) || 0) < 450}" data-arriving="${arriving?.id === card.id && Date.now() - arriving.at < 350}" data-card="${card.id}" tabindex="${tab ? '0' : '-1'}" aria-label="${escape(cardLabel(card)) + pick(' 第' + (card.id >= 54 ? '二' : '一') + '张', ' · copy ' + (card.id >= 54 ? 2 : 1)) + (trump ? pick('，主牌', ', trump') : '')}" aria-pressed="${selected.has(card.id)}"${enabled ? '' : ' disabled'}><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></button>`;
 }
 function handPanel(game) {
+  const touch = innerWidth < 760 || matchMedia('(pointer: coarse)').matches;
   const decision = game.pending,
     bidding = game.dealing === 'continuous' && ['dealing', 'closing'].includes(game.phase);
   const handoff =
@@ -712,6 +759,10 @@ function handPanel(game) {
     const ready =
       decision.phase === 'bury'
         ? pick('选好了，确认扣底', 'Ready to bury')
+        : touch
+          ? appearance.dragToPlay
+            ? pick('按出牌确认，也可向上拖出', 'Press Play or drag upward')
+            : pick('按出牌确认', 'Press Play to confirm')
         : appearance.dragToPlay
           ? pick('拖动任一已选牌一起出 · 也可按出牌', 'Drag any selected card to play the group · or press Play')
           : pick('准备好了，确认出牌', 'Ready to confirm');
@@ -719,6 +770,8 @@ function handPanel(game) {
       ? pick('已选 ', 'Selected ') + selected.size + ' · ' + (error || ready)
       : decision.phase === 'bury'
         ? pick('选满 8 张，再确认扣底', 'Select eight cards, then confirm')
+        : touch
+          ? pick('左右滑动看牌 · 点选后按出牌', 'Swipe to browse · tap cards, then Play')
         : appearance.dragToPlay
           ? pick('点选悬起 · 拖动已选牌可整组出牌', 'Click to select · drag a selected card to play the group')
           : pick('点选或拖出选牌 · 按出牌确认', 'Click or drag to select · confirm to play');
@@ -736,7 +789,7 @@ function handPanel(game) {
           '陪练正在替你打牌，可在暂停菜单收回托管。',
           'A practice bot is playing your hand. Take back control from the pause menu.',
         )
-      : '';
+      : touch ? pick('左右滑动查看手牌', 'Swipe sideways to browse your hand') : '';
   }
   const shown = new Set(
       displayedDeclarations(game)
@@ -774,6 +827,15 @@ function layoutHand() {
   try {
     const width = frame.clientWidth,
       height = frame.clientHeight;
+    const mobile = width < 760 || width < 1050 && (height < 540 || matchMedia('(pointer: coarse)').matches);
+    board.dataset.layout = mobile ? height < 540 && width > height ? 'compact' : 'phone' : 'desktop';
+    board.dataset.density = height < 620 ? 'tiny' : height < 740 ? 'short' : 'normal';
+    if (mobile) {
+      board.style.width = width + 'px';
+      board.style.left = '0px';board.style.top = '0px';board.style.transform = 'none';board.dataset.sceneScale = '1';
+      layoutHandCards();layoutTable(height);handHover?.refresh();
+      return;
+    }
     const minimumWidth = Math.max(1280, handLayout(33, 1280, appearance.handSize).contentWidth + 44);
     let scale = initialSceneScale(width, height, minimumWidth);
     for (let pass = 0; pass < 5; pass++) {
@@ -807,7 +869,10 @@ function layoutHandCards() {
     content = $('handContent');
   if (!root || !content || !root.clientWidth || handDrag?.active) return;
   const nodes = [...content.querySelectorAll('.hand-slot')],
-    layout = handLayout(nodes.length, root.clientWidth, appearance.handSize);
+    mode = $('cardTable').dataset.layout,
+    density = $('cardTable').dataset.density,
+    handScale = appearance.handSize * (mode === 'phone' ? density === 'tiny' ? .75 : density === 'short' ? 11/12 : 1 : 1),
+    layout = handLayout(nodes.length, root.clientWidth, handScale, mode !== 'desktop', mode === 'compact');
   content.style.width = layout.contentWidth + 'px';
   $('cardTable').style.setProperty('--hand-h', layout.cardHeight + 'px');
   root.style.setProperty('--card-w', layout.cardWidth + 'px');
@@ -826,6 +891,7 @@ function layoutTable(sceneHeight) {
   const board = $('cardTable'),
     probe = $('tableCardSize');
   if (!board || !probe?.offsetWidth) return;
+  const mobile = board.dataset.layout !== 'desktop', compact = board.dataset.layout === 'compact';
   const north = board.querySelector('.seat.north');
   const sides = [...board.querySelectorAll('.seat.west,.seat.east')],
     panel = board.querySelector('.hand-panel');
@@ -839,7 +905,7 @@ function layoutTable(sceneHeight) {
     captionHeight = $('tableCaptionSize').offsetHeight;
   const layout = tableLayout({
     width: board.clientWidth,
-    height: Math.max(850, sceneHeight),
+    height: mobile ? sceneHeight : Math.max(850, sceneHeight),
     northBottom: north.offsetTop + north.offsetHeight,
     sideEdge: Math.max(
       ...sides.map((node) =>
@@ -852,7 +918,9 @@ function layoutTable(sceneHeight) {
     handBottom: parseFloat(getComputedStyle(spectatorSeat || panel).bottom) || 0,
     cardWidth,
     captionHeight,
-    narrow: false,
+    narrow: mobile,
+    compact,
+    dense: mobile && board.dataset.density !== 'normal',
   });
   board.style.height = layout.height + 'px';
   board.style.minHeight = layout.minimumHeight + 'px';
@@ -954,8 +1022,8 @@ function bindHand() {
         items: () => [...root.querySelectorAll('.hand-slot')],
         visual: (node) => node.querySelector('.lift'),
         identity: (node) => Number(node.dataset.card),
-        lift: 46,
-        selectedLift: 38,
+        lift: () => $('cardTable')?.dataset.layout === 'desktop' ? 46 : 24,
+        selectedLift: () => $('cardTable')?.dataset.layout === 'desktop' ? 38 : 22,
         spread: true,
         reducedMotion: () => !appearance.motion,
         clipToRoot: true,
@@ -1583,10 +1651,12 @@ for (const [id, key] of Object.entries({
   showHints: 'hints',
   dragToPlay: 'dragToPlay',
   tableSound: 'sound',
+  tableMusic: 'music',
 }))
   $(id).onchange = (event) => {
     appearance[key] = event.target.checked;
     applyAppearance(true);
+    if (key === 'sound' || key === 'music') sound.unlock().then(() => music.sync({ retry: true }));
   };
 for (const id of ['handSize', 'tableSize', 'textSize'])
   $(id).onchange = (event) => {
@@ -1596,6 +1666,14 @@ for (const id of ['handSize', 'tableSize', 'textSize'])
 $('soundVolume').oninput = (event) => {
   appearance.volume = Number(event.target.value);
   applyAppearance(true);
+};
+$('musicVolume').oninput = event => { appearance.musicVolume = Number(event.target.value); applyAppearance(true); };
+$('soundPreview').onclick = () => sound.preview();
+$('audioToggle').onclick = () => {
+  const enabled = appearance.sound && appearance.volume > 0 || appearance.music && appearance.musicVolume > 0;
+  appearance.sound = appearance.music = !enabled;
+  if (!enabled) { appearance.volume ||= 35; appearance.musicVolume ||= 30; }
+  applyAppearance(true); sound.unlock().then(() => music.sync({ retry: true }));
 };
 $('effectQuality').onchange = (event) => {
   appearance.effects = event.target.value;
@@ -1723,10 +1801,39 @@ window.visualViewport?.addEventListener('resize', resizeTable);
 renderSetup();
 renderMenu();
 try {
-  const initial = await fetch('/api/state?seat=-1').then((response) => response.json());
+  const initialResponse = await fetch('/api/state?seat=-1');
+  if(!initialResponse.ok)throw new Error('Table service is not ready');
+  const initial = await initialResponse.json();
   status = initial.providers;
   latest = initial;
   csrfToken = initial.csrf || '';
+  if(initial.siteEdition?.results?.enabled){
+    $('resultsNotice').hidden=false;
+    const retained=initial.siteEdition.results.ipRetentionDays;
+    $('resultsNotice').textContent=pick('完成的单局会私下保存胜方、完整牌谱（含四家初始手牌）和匿名会话 ID；未完成的局不进入成绩库。','Completed deals privately save their winner, complete replay (including all four initial hands) and anonymous session ID; unfinished deals do not enter the results archive. ')+
+      (retained?pick('获取到的 IP 在 '+retained+' 天后清除。','Available IP addresses are cleared after '+retained+' days.'):pick('获取到的 IP 随牌谱保留。','Available IP addresses are retained with the replay.'));
+  }
+  if(initial.capabilities?.personalConnections===false){
+    $('connectionsButton').hidden=true;
+    $('apiSettingsTitle').textContent=pick('网站提供的 AI','AI provided by this site');
+    $('apiSettingsHelp').textContent=pick('无需提交个人 key。网站提供的模型可在座位里选择；也可以一直使用免费陪练。','No personal key is needed. Choose a provided model in a seat, or keep using the free practice bots.');
+  }else if(initial.siteEdition?.hosting==='workers-free'){
+    $('apiSettingsTitle').textContent=pick('网站 AI 与自己的 API','Hosted AI & your API');
+    $('apiSettingsHelp').textContent=pick('可以使用 Tony 提供的模型，或添加自己的服务地址和 key，例如 OpenRouter。','Use Tony’s supplied models or add your own service URL and key, such as OpenRouter.');
+    $('connectionPrivacy').textContent=pick('key 仅保留在你这张牌桌的服务端内存中，不写入浏览器存储或存档。闲置 30 分钟或服务重启后需要重新填写。','Keys stay only in your table’s server memory, never in browser storage or saved games. Re-enter them after 30 minutes of inactivity or a service restart.');
+  }
+  // A retired host model must not leave a returning visitor stuck in setup.
+  // Personal API choices keep their existing explicit configuration flow.
+  config.seats = config.seats.map(seat => seat.kind === 'api' && seat.provider!=='mock' && (seat.connectionId?.startsWith('sponsored-')||initial.capabilities?.personalConnections===false) &&
+    !initial.connections?.some(p => p.id === seat.connectionId && p.active && p.models.some(m => m.id === seat.model))
+    ? { ...seat, kind: 'peilian', provider: 'mock', connectionId: undefined, model: '' } : seat);
+  const hostedDefault = initial.connections?.find(p => p.sponsored && p.default && p.active);
+  if (!hasSavedSetup && !initial.game && hostedDefault) {
+    config.seats = defaultSeats().map((seat, index) => index ? {
+      ...seat, kind: 'api', provider: hostedDefault.provider, connectionId: hostedDefault.id,
+      model: hostedDefault.models[0].id, endgameAnalysis: false,
+    } : seat);
+  }
   if (config.setupDefaultsVersion < setupDefaultsVersion) {
     config.seats = config.seats.map((seat) =>
       seat.kind === 'api' && seat.provider !== 'mock' && !connectionFor(seat, initial.connections || [])

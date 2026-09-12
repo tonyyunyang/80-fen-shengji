@@ -6,13 +6,14 @@ const root = resolve(import.meta.dirname, '..');
 async function files(directory) {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && ['.wrangler','node_modules','dist','output','data'].includes(entry.name)) continue;
     const path = directory + '/' + entry.name;
     if (entry.isDirectory()) result.push(...await files(path)); else result.push(path);
   }
   return result;
 }
 let count = 0;
-for (const directory of ['src', 'server', 'public', 'scripts', 'test']) {
+for (const directory of ['src', 'server', 'public', 'scripts', 'test', 'cloudflare']) {
   for (const file of await files(root + '/' + directory)) {
     if (!/\.(mjs|js)$/.test(file)) continue;
     const check = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
