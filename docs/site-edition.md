@@ -50,6 +50,7 @@ flowchart LR
   T --> B[Private sponsored broker]
   B --> K[Worker Secrets]
   B --> M[Authorized Alibaba / Kimi endpoint]
+  T --> U[Visitor's own public API: memory-only key]
 ```
 
 The game remains server-authoritative. Visitors cannot select another table
@@ -64,11 +65,18 @@ heartbeats are answered without running the game JavaScript. A disconnected
 or hidden table pauses after the existing grace period. Saves expire after
 seven idle days. There is no continuously running Docker process.
 
-The Free mode uses the host's provided connections and free practice bots.
-It does not collect visitors' personal keys. The optional Node worker-thread
-endgame sampler is unavailable in this mode; normal practice play and the
-model's own-hand/public-information decision path remain. The normal Node
-app still supports its existing BYOK and optional threaded-analysis features.
+The Free mode offers the host's provided connections, visitors' own URL/key
+connections, and free practice bots. Personal connections support Chat
+Completions, Responses, and Messages, with text-model discovery and manual
+model IDs. Their keys stay only in the owning table's memory; SQLite retains
+connection metadata, never keys. Keys clear after 30 minutes without public
+browser activity or on a Worker restart. While keys are present, a timer keeps
+the object resident and consumes active-duration quota. See the separate
+[Workers network and credential contract](security-and-deployment.md).
+
+The optional Node worker-thread endgame sampler is unavailable in this mode;
+normal practice play and the model's own-hand/public-information decision
+path remain. The normal Node app retains its threaded-analysis feature.
 The preserved practice core is unchanged; no alternate table interface is added.
 
 `public/index.html` stays the only runtime HTML entry. The asset build copies
@@ -84,10 +92,10 @@ Alibaba Coding/Token Plan and Kimi Code endpoints. A product name is not used
 as a blanket authorization prohibition. Use the credentials and billing terms
 approved for this deployment; do not put agreement documents or keys in Git.
 
-Provider keys exist only as Worker Secrets. Public profiles contain fixed
+Host provider keys exist only as Worker Secrets. Public profiles contain fixed
 model IDs and endpoint metadata, never key values. Only a validated game
 controller calls the internal broker; no generic model proxy is exposed to
-visitors. Requests cannot choose an arbitrary URL or credential. Provider
+visitors. Sponsored requests cannot choose an arbitrary URL or credential. Provider
 responses are redacted after JSON decoding, including escaped key echoes.
 
 Sponsored connections are read-only. An operator may explicitly mark one as
@@ -156,6 +164,8 @@ continues to use practice bots for ordinary local review.
 | Setting | Initial production value |
 | --- | --- |
 | Default AI | Alibaba Token Plan / `qwen3.8-flash` |
+| Other hosted text models | `qwen3.8-max`, `qwen3.7-plus`, `qwen3.7-max`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-0731`, `glm-5.2` |
+| Personal connections | Enabled; each visitor may provide their own public HTTPS base URL and key. |
 | Kimi Code | Disabled in the public picker: its endpoint returns HTTP 403 from Cloudflare; the private key binding is retained. |
 | Daily allowance across the site | 2,000 attempted model requests |
 | Daily allowance per visitor and table | 500 attempted model requests |
@@ -166,6 +176,21 @@ Visitors choose the supplied models without entering a key. Request limits
 are enforced by the existing durable broker; exhausted allowances use the
 existing practice fallback. Change these values in `env.production.vars`
 and redeploy so this branch remains the source of configuration.
+
+The eight hosted IDs match the text models returned by the authorized Token
+Plan endpoint on September 12, 2026. Image, audio, and video IDs are excluded.
+One provider profile owns this model list; the broker validates the selected
+ID against it before using the host key. Flash remains the explicit default.
+The same seat can instead use a personal connection, including an OpenRouter
+Chat Completions base URL. Such requests use only that visitor's key.
+
+A bounded production check returned one valid real game action from each of
+the eight hosted models. A separate personal-connection check discovered the
+same eight text IDs and returned a valid Flash action through the Workers
+public-network adapter. Test tables were paused and the personal test key
+was cleared. These are connection/action-format checks, not strength or
+long-running reliability guarantees. Native runtime regression tests also
+cover Workers DNS results that contain CNAME aliases alongside IP addresses.
 
 The active production environment requires `EIGHTY_GATEWAY_SECRET` and
 `SPONSOR_ALIBABA_API_KEY` as Worker Secrets. `SPONSOR_KIMI_API_KEY` is also
@@ -219,6 +244,18 @@ It is therefore excluded from active `SPONSOR_PROFILES`; its secret remains
 stored for a future authorized endpoint/access fix. No client identity or
 network restriction is bypassed. Re-enable the Kimi profile only after a
 bounded live game action succeeds from the deployed Worker.
+
+The operator-only `/_eighty/provider-check` diagnostic is disabled by default
+and in normal production. When explicitly enabled, it requires the gateway
+Bearer secret, uses fixed provider endpoints/prompts, and consumes broker
+allowance. Its response includes only status and sanitized request metadata;
+no provider body or key is returned. Disable it after a diagnostic session.
+The September 12 probe confirmed that the private binding matches the local
+key and that both official protocols receive an upstream HTML 403. The Kimi
+console's successful Eighty entry aligns with the earlier local check. Keep
+the sanitized timestamps and Ray IDs in ignored
+`output/model-expansion/Kimi-Cloudflare-diagnostics.md` for operator follow-up;
+private runtime records do not belong in the public repository.
 
 The broker preserves sanitized upstream status/category and numeric Cloudflare
 error codes in audit metadata; provider error bodies and private keys are not

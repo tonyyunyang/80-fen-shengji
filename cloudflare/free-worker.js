@@ -1,5 +1,5 @@
 import { browserOriginAllowed } from '../server/request-origin.js';
-import { visitorIdentity } from './sponsor-core.js';
+import { visitorIdentity,secretMatches,boundedText } from './sponsor-core.js';
 import { mintSession,readSession,cookieName,cookieHeader } from './session-cookie.js';
 export { GameTable } from './game-table.js';
 export { SponsoredAI } from './sponsored-object.js';
@@ -9,6 +9,10 @@ export default {
   async fetch(request,env){
     const url=new URL(request.url),local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
     if(!local&&url.protocol!=='https:'){url.protocol='https:';return Response.redirect(url.href,308);}
+    if(url.pathname==='/_eighty/provider-check'&&env.EIGHTY_PROVIDER_DIAGNOSTICS==='true'&&request.method==='POST'&&await secretMatches(request.headers.get('authorization'),env.EIGHTY_GATEWAY_SECRET)){
+      let body;try{body=await boundedText(request.body,2048);}catch{return json(413,{error:'Diagnostic body too large'});}
+      return env.SPONSORED_AI.getByName('daily-allowance').fetch(new Request('https://internal.eighty/_eighty/provider-check',{method:'POST',headers:{'content-type':'application/json',authorization:request.headers.get('authorization')},body}));
+    }
     if(url.pathname.startsWith('/_eighty/'))return json(404,{error:'Not found'});
     if(!url.pathname.startsWith('/api/')){
       const asset=await env.ASSETS.fetch(request);
@@ -21,9 +25,9 @@ export default {
     if(!browserOriginAllowed({method:request.method,pathname:url.pathname,origin:request.headers.get('origin'),expectedOrigin:url.origin,
       site:request.headers.get('sec-fetch-site'),mode:request.headers.get('sec-fetch-mode'),destination:request.headers.get('sec-fetch-dest')}))return json(403,{error:'Origin rejected'});
     if(url.pathname==='/api/health'&&request.method==='GET')return json(200,{ready:true,hosting:'workers-free'});
-    // This edition never accepts personal API credentials. Reject these
-    // requests before forwarding their body to a table or touching storage.
-    if(url.pathname.startsWith('/api/connections/'))return json(403,{error:'本版本使用网站提供的连接，无需提交个人 key'});
+    // Operators can disable personal connections before a credential body
+    // reaches a table. Hosted secrets never use these visitor-selected routes.
+    if(url.pathname.startsWith('/api/connections/')&&env.PERSONAL_CONNECTIONS_ENABLED!=='true')return json(403,{error:'个人 API 连接未启用'});
     const secret=env.EIGHTY_GATEWAY_SECRET;
     if(typeof secret!=='string'||secret.length<32)return json(503,{error:'Configure the private session secret'});
     const raw=(request.headers.get('cookie')||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(cookieName(url)+'='))?.slice(cookieName(url).length+1);
@@ -38,7 +42,14 @@ export default {
     const headers=new Headers(request.headers);
     headers.delete('authorization');headers.delete('cookie');
     headers.set('x-eighty-gateway',secret);headers.set('x-eighty-session',session);headers.set('x-eighty-visitor',visitor);
-    const result=await env.GAME_TABLES.getByName(session).fetch(new Request(request,{headers}));
+    // Detach bounded JSON bodies from the incoming stream before the internal
+    // hop. In particular a rejected key submission must not break the relay.
+    let forwarded;
+    if(request.method==='POST'){
+      let body;try{body=await boundedText(request.body,131072);}catch{return json(413,{error:'Request body too large'});}
+      forwarded=new Request(request.url,{method:'POST',headers,body});
+    }else forwarded=new Request(request,{headers});
+    const result=await env.GAME_TABLES.getByName(session).fetch(forwarded);
     if(!setCookie)return result;
     const withCookie=new Response(result.body,result);withCookie.headers.set('set-cookie',setCookie);return withCookie;
   },

@@ -12,6 +12,7 @@ import './build-worker-assets.mjs';
 const root=resolve(import.meta.dirname,'..'),dir=await mkdtemp(join(tmpdir(),'eighty-free-check-'));
 const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
 const base='http://127.0.0.1:'+port,providerSecret='fixture-provider-secret-kept-off-the-browser',gatewaySecret='fixture-signing-secret-not-a-real-credential';
+const personalSecret='visitor-fixture-key-not-a-live-credential';
 let child,logs='',ws;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function start(){
@@ -27,7 +28,7 @@ async function stop(){
 const get=(path,cookie,extra={})=>fetch(base+path,{headers:{...(cookie?{cookie}:{}),...extra}});
 const post=(path,cookie,csrf,body)=>fetch(base+path,{method:'POST',headers:{cookie,'x-eighty-csrf':csrf,'content-type':'application/json',origin:base},body:JSON.stringify(body)});
 async function newBrowser(){const r=await get('/api/state?seat=0');assert.equal(r.status,200);return{cookie:r.headers.get('set-cookie').split(';')[0],data:await r.json()};}
-function noKeys(value){const text=typeof value==='string'?value:JSON.stringify(value);assert.equal(text.includes(providerSecret),false);assert.equal(text.includes(gatewaySecret),false);}
+function noKeys(value){const text=typeof value==='string'?value:JSON.stringify(value);for(const key of [providerSecret,gatewaySecret,personalSecret])assert.equal(text.includes(key),false);}
 async function openSocket(cookie){
   const messages=[];
   const connection=new WebSocket(base.replace('http:','ws:')+'/api/events?seat=0&client=fixture&visible=true',{headers:{cookie,origin:base}});
@@ -47,7 +48,15 @@ try{
   assert.equal((await get('/api/state',a.cookie,{'sec-fetch-site':'cross-site'})).status,403);
   assert.equal((await post('/api/start',a.cookie,'wrong',{})).status,403);
   const denied=await post('/api/connections/save',a.cookie,a.data.csrf,{key:'visitor-key-must-not-be-saved'});
-  if(denied.status!==403)throw new Error('Connection write boundary: '+denied.status+' '+(await denied.text()).replaceAll(providerSecret,'[redacted]').replaceAll(gatewaySecret,'[redacted]')+'\n'+logs);
+  assert.equal(denied.status,400,'incomplete personal connections are rejected');
+  assert.equal(a.data.capabilities.personalConnections,true);
+  const personal={name:'My fixture provider',provider:'qwen',baseUrl:'https://fixture-provider.example/v1',models:[{id:'fixture-text'}],key:personalSecret};
+  const savedResponse=await post('/api/connections/save',a.cookie,a.data.csrf,personal);assert.equal(savedResponse.status,200);const personalId=(await savedResponse.json()).id;
+  const discoverResponse=await post('/api/connections/discover',a.cookie,a.data.csrf,{...personal,id:personalId,key:''});assert.equal(discoverResponse.status,200);const discovered=await discoverResponse.json();noKeys(discovered);assert.deepEqual(discovered.models.map(m=>m.id),['fixture-text']);
+  const ownerView=await (await get('/api/state',a.cookie)).json();noKeys(ownerView);assert.equal(ownerView.connections.find(p=>p.id===personalId).active,true);
+  assert.equal((await (await get('/api/state',b.cookie)).json()).connections.some(p=>p.id===personalId),false,'personal connections belong to the cookie owner');
+  assert.equal((await post('/api/connections/forget',b.cookie,b.data.csrf,{id:personalId})).status,400);
+  assert.equal((await post('/api/connections/delete',a.cookie,a.data.csrf,{id:'sponsored-fixture'})).status,400);
   assert.equal((await post('/_eighty/sponsored/sponsored-fixture',a.cookie,a.data.csrf,{})).status,404,'there is no public model proxy');
   const channel=await openSocket(a.cookie);ws=channel.connection;
   ws.send('{"type":"ping"}');
@@ -73,6 +82,7 @@ try{
   assert.equal(restored.game.id,before.game.id);assert.equal(restored.game.version,before.game.version);
   assert.equal(restored.csrf,a.data.csrf,'hibernation/restart retains the session CSRF token');
   assert.ok(restored.revision>before.revision);assert.equal(restored.paused,true);noKeys(restored);
+  assert.equal(restored.connections.find(p=>p.id===personalId).active,false,'restart preserves metadata but clears personal keys');
   const forged=a.cookie.replace(/=(.)/,(_m,c)=>'='+(c==='a'?'b':'a'));
   assert.equal((await post('/api/pause',forged,a.data.csrf,{paused:false})).status,401);
   const probe=await (await get('/api/state?seat=0',b.cookie,{'x-eighty-session':a.cookie.split('=')[1].split('.')[0]})).json();
@@ -93,5 +103,13 @@ try{
   assert.ok(hosted.config.seats.every(seat=>seat.endgameAnalysis===false));
   assert.equal((await post('/api/pause',b.cookie,b.data.csrf,{paused:true})).status,200);
   noKeys(await (await get('/api/audit',b.cookie)).json());
-  console.log('Free Worker native checks passed: no public keys, signed cookies, isolated tables, WebSocket auto-response, legal/stale actions, SQLite recovery, and the internal sponsored-provider route. No live model calls.');
+  const personalSeat={kind:'api',provider:'qwen',connectionId:personalId,model:'fixture-text',name:'Personal fixture'};
+  assert.equal((await post('/api/connections/save',a.cookie,a.data.csrf,{...personal,id:personalId})).status,200);
+  assert.equal((await post('/api/start',a.cookie,a.data.csrf,{seats:Array.from({length:4},()=>personalSeat),dealing:'ordered',speed:50,limits:{maxRequests:1}})).status,200);
+  let privatePlay;for(let i=0;i<120;i++){privatePlay=await (await get('/api/state?seat=0',a.cookie)).json();noKeys(privatePlay);if(privatePlay.stats.input>=10)break;await sleep(100);}
+  assert.ok(privatePlay.stats.input>=10,'personal connection reaches its own synthetic provider');assert.equal(privatePlay.stats.errors,0);
+  assert.equal((await post('/api/pause',a.cookie,a.data.csrf,{paused:true})).status,200);
+  await sleep(5400);
+  const expired=await (await get('/api/state',a.cookie)).json();noKeys(expired);assert.equal(expired.connections.find(p=>p.id===personalId).active,false,'idle expiry clears only memory-held keys');
+  console.log('Free Worker native checks passed: private key lifecycle, model discovery, separate tables, WebSocket heartbeat, legal/stale actions, SQLite recovery, sponsored and personal provider routes. No live model calls.');
 }finally{ws?.terminate();await stop();await rm(dir,{recursive:true,force:true});}

@@ -1756,6 +1756,10 @@ try {
     $('connectionsButton').hidden=true;
     $('apiSettingsTitle').textContent=pick('网站提供的 AI','AI provided by this site');
     $('apiSettingsHelp').textContent=pick('无需提交个人 key。网站提供的模型可在座位里选择；也可以一直使用免费陪练。','No personal key is needed. Choose a provided model in a seat, or keep using the free practice bots.');
+  }else if(initial.siteEdition?.hosting==='workers-free'){
+    $('apiSettingsTitle').textContent=pick('网站 AI 与自己的 API','Hosted AI & your API');
+    $('apiSettingsHelp').textContent=pick('可以使用 Tony 提供的模型，或添加自己的服务地址和 key，例如 OpenRouter。','Use Tony’s supplied models or add your own service URL and key, such as OpenRouter.');
+    $('connectionPrivacy').textContent=pick('key 仅保留在你这张牌桌的服务端内存中，不写入浏览器存储或存档。闲置 30 分钟或服务重启后需要重新填写。','Keys stay only in your table’s server memory, never in browser storage or saved games. Re-enter them after 30 minutes of inactivity or a service restart.');
   }
   // A retired host model must not leave a returning visitor stuck in setup.
   // Personal API choices keep their existing explicit configuration flow.

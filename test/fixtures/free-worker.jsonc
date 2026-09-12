@@ -9,6 +9,7 @@
   "migrations": [{ "tag": "fixture-v1", "new_sqlite_classes": ["GameTable", "FixtureBroker"] }],
   "vars": {
     "EIGHTY_GATEWAY_SECRET": "fixture-signing-secret-not-a-real-credential",
+    "PERSONAL_CONNECTIONS_ENABLED": "true",
     "SPONSOR_ALIBABA_API_KEY": "fixture-provider-secret-kept-off-the-browser",
     "SPONSORED_ENABLED": "true",
     "SPONSOR_PROFILES": "[{\"id\":\"sponsored-fixture\",\"name\":\"Hosted fixture\",\"model\":\"fixture-model\",\"baseUrl\":\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\"}]",

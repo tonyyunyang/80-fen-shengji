@@ -2,7 +2,7 @@
   English · <a href="README.md">简体中文</a>
 </p>
 
-**Website edition is live:** [Play 80 online](https://eighty.tonytheyang.com/) — Qwen AI is provided by Tony; no personal key is needed.
+**Website edition is live:** [Play 80 online](https://eighty.tonytheyang.com/) — Qwen 3.8 Flash by default, with DeepSeek, GLM and other text models provided by Tony. Your own URL and key are also supported.
 
 > **Website edition:** `codex/tonytheyang-site` maintains Tony's hosted Eighty
 > deployment and optional sponsored AI in this repository.

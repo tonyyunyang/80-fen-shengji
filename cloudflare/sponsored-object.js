@@ -1,9 +1,12 @@
 import { DurableObject } from 'cloudflare:workers';
 import { sponsoredRequest } from './sponsor-core.js';
+import { providerDiagnostics } from './provider-diagnostics.js';
 
 export class SponsoredAI extends DurableObject {
   async fetch(request) {
-    const response = await sponsoredRequest(request, this.env, this.ctx.storage);
+    const response = new URL(request.url).pathname==='/_eighty/provider-check'
+      ? await providerDiagnostics(request,this.env,this.ctx.storage)
+      : await sponsoredRequest(request, this.env, this.ctx.storage);
     await this.armCleanup();
     return response;
   }

@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Session } from '../server/session.js';
 import { HumanPresence } from '../server/presence.js';
-import { HostedConnections } from './hosted-connections.js';
+import { TableConnections } from './table-connections.js';
 import { boundedText, secretMatches } from './sponsor-core.js';
 import { SESSION_TTL } from './session-cookie.js';
 
@@ -16,6 +16,7 @@ export class GameTable extends DurableObject {
   constructor(ctx,env){
     super(ctx,env);
     this.sockets=new Map();this.mutations=[];this.restoring=true;this.saveFailed=false;this.idleTimer=null;
+    this.keyTimer=null;this.lastPublicActivity=Date.now();
     this.ready=ctx.blockConcurrencyWhile(async()=>{
       ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS game_checkpoint (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL)');
       const row=[...ctx.storage.sql.exec('SELECT data FROM game_checkpoint WHERE id = 1')][0];
@@ -28,7 +29,7 @@ export class GameTable extends DurableObject {
       this.expiresAt=saved?.expiresAt||Date.now()+SESSION_TTL;
       this.auditRows=Array.isArray(saved?.auditRows)?saved.auditRows.slice(-2000):[];
       this.snapshot=saved?.snapshot||null;this.lastCommitted=saved?JSON.stringify(saved):null;
-      this.connections=new HostedConnections(env,()=>({session:this.ownerId,visitor:this.visitor}));
+      this.connections=new TableConnections(env,()=>({session:this.ownerId,visitor:this.visitor}),{saved:saved?.connections||[],fetchImpl:this.personalFetch(),keysChanged:()=>this.keepKeysAlive()});
       this.session=new Session({env:{},connections:this.connections,persist:(data,published)=>this.save(data,published),audit:entry=>{
         this.auditRows.push({at:new Date().toISOString(),...entry});
         if(this.auditRows.length>2000)this.auditRows.shift();
@@ -38,7 +39,7 @@ export class GameTable extends DurableObject {
       for(const ws of ctx.getWebSockets()){
         try{const meta=ws.deserializeAttachment();if(meta)this.attach(ws,meta);}catch{}
       }
-      if(saved?.snapshot?.state&&saved.paused===false&&this.visibleSockets())this.session.pause(false);
+      if(saved?.snapshot?.state&&saved.paused===false&&this.visibleSockets()&&!this.connections.needsKeys(this.session.state))this.session.pause(false);
       this.restoring=false;
       // Hibernation retains the CSRF token; revisions remain monotonic.
       this.revision++;
@@ -46,13 +47,29 @@ export class GameTable extends DurableObject {
       ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"type":"ping"}','{"type":"pong"}'));
     });
   }
+  personalFetch(){return undefined;}
+  personalKeyLifetime(){return 30*60*1000;}
+  keepKeysAlive(){
+    clearTimeout(this.keyTimer);this.keyTimer=null;
+    if(!this.connections?.hasKeys())return;
+    // A timer prevents hibernation from silently losing a configured key.
+    // Its deadline follows public browser activity, never private bidding work.
+    const remaining=this.personalKeyLifetime()-(Date.now()-this.lastPublicActivity);
+    this.keyTimer=setTimeout(()=>{
+      this.keyTimer=null;
+      if(Date.now()-this.lastPublicActivity<this.personalKeyLifetime()){this.keepKeysAlive();return;}
+      this.connections.clearKeys();
+      if(this.session.state)this.session.pause(true,'credentials');
+      this.persist();this.broadcast();
+    },Math.max(100,remaining));
+  }
   visibleSockets(){return [...this.sockets.keys()].some(ws=>ws.readyState===1&&ws.deserializeAttachment()?.visible);}
   attach(ws,meta){
     const detach=this.presence.attach(meta.seat,meta.clientId,meta.visible);
     this.sockets.set(ws,{meta,detach});
   }
   record(){return {snapshot:this.snapshot,csrf:this.csrf,revision:this.revision,paused:this.session.paused,
-    ownerId:this.ownerId,visitor:this.visitor,expiresAt:this.expiresAt,auditRows:this.auditRows,mutations:this.mutations};}
+    ownerId:this.ownerId,visitor:this.visitor,expiresAt:this.expiresAt,auditRows:this.auditRows,mutations:this.mutations,connections:this.connections.snapshot()};}
   persist(){
     if(this.restoring)return;
     const data=JSON.stringify(this.record());
@@ -79,11 +96,11 @@ export class GameTable extends DurableObject {
       this.persist();
     }
   }
-  async touch(){this.expired=false;this.expiresAt=Date.now()+SESSION_TTL;this.persist();await this.ctx.storage.setAlarm(this.expiresAt);}
+  async touch(){this.lastPublicActivity=Date.now();this.expired=false;this.expiresAt=Date.now()+SESSION_TTL;this.keepKeysAlive();this.persist();await this.ctx.storage.setAlarm(this.expiresAt);}
   view(seat){return {...this.session.view(seat),connections:this.connections.list(),csrf:this.csrf,revision:this.revision,
     hosted:true,restoreAvailable:false,saveFailed:this.saveFailed,
     siteEdition:{name:'Tony’s website edition',branch:'codex/tonytheyang-site',repository:'https://github.com/tonyyunyang/80-fen-shengji',sponsored:this.connections.profiles.length>0,hosting:'workers-free'},
-    capabilities:{webSocket:true,personalConnections:false,endgameAnalysis:false}};}
+    capabilities:{webSocket:true,personalConnections:this.connections.enabled,personalKeyTtlMinutes:30,endgameAnalysis:false}};}
   broadcast(){
     if(this.saveFailed)return;
     for(const [ws,{meta}]of this.sockets)try{ws.send(JSON.stringify(this.view(meta.seat)));}catch{this.detach(ws);}
@@ -146,7 +163,15 @@ export class GameTable extends DurableObject {
         for(const [ws,entry]of this.sockets)if(entry.meta.clientId===data.clientId){entry.meta.visible=data.visible;ws.serializeAttachment(entry.meta);}
         this.checkAway();
       }
-      else if(path.startsWith('/api/connections/'))return response(403,{error:'本版本使用网站提供的连接，无需提交个人 key'});
+      else if(path==='/api/connections/save'){
+        const id=this.connections.save(data);data.key='';
+        if(this.session.state)this.session.pause(true,'credentials');this.persist();this.broadcast();return response(200,{ok:true,id});
+      }else if(path==='/api/connections/discover'){
+        try{return response(200,await this.connections.discover(data));}finally{data.key='';}
+      }else if(path==='/api/connections/forget'||path==='/api/connections/delete'){
+        if(path.endsWith('/delete'))this.connections.remove(data.id);else this.connections.forget(data.id);
+        if(this.session.state)this.session.pause(true,'credentials');this.persist();this.broadcast();
+      }
       else return response(404,{error:'Not found'});
       return response(200,{ok:true});
     }catch(error){return response(error.status||400,{error:error.status===503?error.message:error.message||'Request failed'});}
@@ -167,7 +192,7 @@ export class GameTable extends DurableObject {
   async alarm(){
     await this.ready;
     if(this.expired||Date.now()>=this.expiresAt){
-      clearTimeout(this.idleTimer);this.session.stop();this.presence.stop();
+      clearTimeout(this.idleTimer);clearTimeout(this.keyTimer);this.connections.clearKeys();this.session.stop();this.presence.stop();
       for(const ws of this.sockets.keys())try{ws.close(1000,'Table expired');}catch{}
       this.sockets.clear();await this.ctx.storage.deleteAll();
     }else await this.ctx.storage.setAlarm(this.expiresAt);

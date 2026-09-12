@@ -15,6 +15,7 @@ const ENDPOINTS = new Set([
 const KEY_NAMES = new Set(['SPONSOR_ALIBABA_API_KEY', 'SPONSOR_KIMI_API_KEY']);
 const idPattern = /^sponsored-[a-z0-9-]{1,40}$/;
 const identityPattern = /^[a-f0-9]{64}$/;
+const modelPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/;
 const reply = (status, data, headers = {}) => Response.json(data, { status, headers: { 'cache-control': 'no-store', ...headers } });
 function redact(value,secrets){
   if(typeof value==='string'){for(const secret of secrets)value=value.split(secret).join('[redacted]');return value;}
@@ -41,8 +42,15 @@ export function profiles(env) {
   if (!Array.isArray(raw) || !raw.length || raw.length > 4) throw new Error('Configure one to four sponsored profiles');
   const seen = new Set();
   for (const p of raw) {
+    const models = p.models || (p.model ? [{id:p.model,label:p.label||p.model}] : []);
+    if (!Array.isArray(models) || !models.length || models.length > 32) throw new Error('Configure one to 32 text models per sponsored connection');
+    p.models = models.map(m => typeof m === 'string' ? {id:m,label:m} : {id:m?.id,label:m?.label||m?.id});
+    if (p.models.some(m => typeof m.id !== 'string' || !modelPattern.test(m.id) || typeof m.label !== 'string' || m.label.length > 80) ||
+      new Set(p.models.map(m=>m.id)).size !== p.models.length) throw new Error('Invalid sponsored model list');
+    p.model ||= p.models[0].id;
+    p.provider ||= 'qwen';
     if (!idPattern.test(p.id) || seen.has(p.id) || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 50 ||
-      typeof p.model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,119}$/.test(p.model) ||
+      !p.models.some(m=>m.id===p.model) || !['qwen','claude'].includes(p.provider) ||
       !ENDPOINTS.has(p.baseUrl) || !KEY_NAMES.has(p.keySecret) || typeof env[p.keySecret] !== 'string' || env[p.keySecret].length < 8) {
       throw new Error('Invalid sponsored configuration: use an approved endpoint and a Worker secret');
     }
@@ -53,7 +61,7 @@ export function profiles(env) {
   return raw;
 }
 export function publicProfiles(env) {
-  return profiles(env).map(({ id, name, model, label, baseUrl, default: isDefault }) => ({ id, name, model, label, baseUrl, default: isDefault === true }));
+  return profiles(env).map(({ id, name, model, models, provider, label, baseUrl, default: isDefault }) => ({ id, name, model, models, provider, label, baseUrl, default: isDefault === true }));
 }
 export async function secretMatches(header, secret) {
   if (!secret || secret.length < 32 || typeof header !== 'string') return false;
@@ -107,15 +115,16 @@ export async function sponsoredRequest(request, env, storage, fetchImpl = fetch,
   if (!identityPattern.test(session || '') || !identityPattern.test(visitor || '')) return reply(400, { error: { message: 'Invalid session identity' } });
   let input;
   try { input = JSON.parse(await boundedText(request.body, 65536)); } catch { return reply(400, { error: { message: 'Invalid request body' } }); }
-  if (input.model !== profile.model || !Array.isArray(input.messages) || !input.messages.length || input.messages.length > 12 ||
+  if (!profile.models.some(m=>m.id===input.model) || !Array.isArray(input.messages) || !input.messages.length || input.messages.length > 12 ||
     input.messages.some(m => !['system','user','assistant','tool'].includes(m.role) || typeof m.content !== 'string')) {
     return reply(400, { error: { message: 'Invalid game request' } });
   }
   const requested = Number(input.max_completion_tokens ?? input.max_tokens ?? caps.output);
   if (!Number.isSafeInteger(requested) || requested <= 0) return reply(400, { error: { message: 'Invalid output limit' } });
-  const fields = ['model','messages','tools','tool_choice','parallel_tool_calls','enable_thinking','preserve_thinking','thinking_budget','reasoning_effort','thinking','response_format','temperature','tool_stream','clear_thinking'];
+  const fields = ['model','messages','system','tools','tool_choice','parallel_tool_calls','enable_thinking','preserve_thinking','thinking_budget','reasoning_effort','thinking','response_format','temperature','tool_stream','clear_thinking'];
   const payload = Object.fromEntries(fields.filter(k => input[k] !== undefined).map(k => [k,input[k]]));
-  payload.stream = false; payload.n = 1;
+  payload.stream = false;
+  if(profile.provider==='qwen')payload.n = 1;
   payload[input.max_completion_tokens !== undefined ? 'max_completion_tokens' : 'max_tokens'] = Math.min(requested, caps.output);
   if (typeof payload.thinking_budget === 'number') payload.thinking_budget = Math.min(payload.thinking_budget, Math.max(0,caps.output - 128));
   try {
@@ -128,8 +137,10 @@ export async function sponsoredRequest(request, env, storage, fetchImpl = fetch,
   if (request.signal.aborted) controller.abort();
   const timer = setTimeout(abort, 11000);
   try {
-    const upstream = await fetchImpl(profile.baseUrl + '/chat/completions', { method: 'POST', redirect: 'manual', signal: controller.signal,
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[profile.keySecret], 'user-agent': 'Eighty-Website/0.3.0 (tonytheyang.com)' }, body: JSON.stringify(payload) });
+    const path=profile.provider==='claude'?'/messages':'/chat/completions';
+    const headers=profile.provider==='claude'?{'x-api-key':env[profile.keySecret],'anthropic-version':'2023-06-01'}:{authorization:'Bearer '+env[profile.keySecret]};
+    const upstream = await fetchImpl(profile.baseUrl + path, { method: 'POST', redirect: 'manual', signal: controller.signal,
+      headers: { 'content-type': 'application/json', ...headers, 'user-agent': 'Eighty-Website/0.3.0 (tonytheyang.com)' }, body: JSON.stringify(payload) });
     const diagnostic = kind => ({ 'x-eighty-provider-status': String(upstream.status), 'x-eighty-provider-result': kind });
     if (upstream.status >= 300 && upstream.status < 400) return reply(502, { error: { message: 'Provider redirect rejected' } }, diagnostic('redirect'));
     const raw = await boundedText(upstream.body, 1048576);
