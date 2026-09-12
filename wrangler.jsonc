@@ -60,5 +60,46 @@
   },
   "build": {
     "command": "node scripts/build-worker-assets.mjs"
+  },
+  "env": {
+    "production": {
+      "name": "eighty-tonytheyang",
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "GAME_TABLES",
+            "class_name": "GameTable"
+          },
+          {
+            "name": "SPONSORED_AI",
+            "class_name": "SponsoredAI"
+          }
+        ]
+      },
+      "vars": {
+        "EIGHTY_PUBLIC_ORIGIN": "https://eighty.tonytheyang.com",
+        "SPONSORED_ENABLED": "true",
+        "SPONSOR_PROFILES": "[{\"id\":\"sponsored-alibaba\",\"name\":\"Qwen 3.8 Flash\",\"model\":\"qwen3.8-flash\",\"baseUrl\":\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",\"keySecret\":\"SPONSOR_ALIBABA_API_KEY\",\"default\":true},{\"id\":\"sponsored-kimi\",\"name\":\"Kimi Code\",\"model\":\"kimi-for-coding\",\"baseUrl\":\"https://api.kimi.com/coding/v1\",\"keySecret\":\"SPONSOR_KIMI_API_KEY\"}]",
+        "SPONSOR_DAILY_REQUESTS": "2000",
+        "SPONSOR_SESSION_REQUESTS": "500",
+        "SPONSOR_VISITOR_REQUESTS": "500",
+        "SPONSOR_MAX_OUTPUT_TOKENS": "512",
+        "EIGHTY_TABLES_PER_DAY": "100"
+      },
+      "routes": [
+        {
+          "pattern": "eighty.tonytheyang.com",
+          "custom_domain": true
+        }
+      ],
+      "workers_dev": false,
+      "secrets": {
+        "required": [
+          "EIGHTY_GATEWAY_SECRET",
+          "SPONSOR_ALIBABA_API_KEY",
+          "SPONSOR_KIMI_API_KEY"
+        ]
+      }
+    }
   }
 }

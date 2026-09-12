@@ -146,38 +146,64 @@ cookies, origin/CSRF isolation, private views, WebSocket heartbeats, legal and
 stale actions, and SQLite recovery across restart. The default deployment
 precheck builds the Worker and static assets without Docker.
 
-## Publish when the account and keys are ready
+## Production configuration
 
-1. Log in with `npx wrangler login` and confirm the intended Cloudflare account.
-   Select Workers Free if no paid plan is wanted; the default code needs no
-   Paid-only bindings or resources.
-2. Connect the Workers build to this repository and `codex/tonytheyang-site`.
-   Install with `npm ci --ignore-scripts`; deploy with `npx wrangler deploy`.
-3. Set a new random `EIGHTY_GATEWAY_SECRET` of at least 32 characters using
-   `npx wrangler secret put EIGHTY_GATEWAY_SECRET`. It signs table cookies and
-   protects internal operations. Keep it out of frontend builds and chat.
-4. Deploy the practice-bot version first and verify the actual custom domain.
-   No R2 bucket or container provisioning is needed.
-5. When approved provider credentials and explicit request budgets are ready,
-   add `SPONSOR_ALIBABA_API_KEY` and/or `SPONSOR_KIMI_API_KEY` as Worker Secrets.
-   Set `SPONSOR_PROFILES`, the three request caps and the output cap; then set
-   `SPONSORED_ENABLED` to `true`. Each profile uses an exact approved endpoint.
-6. Verify a separately authorized, bounded live test, then publish the personal
-   website's link. The private Lab is still excluded from that site's deployment.
+`wrangler.jsonc` now has an explicit `production` environment for
+`eighty-tonytheyang` at `https://eighty.tonytheyang.com/`. The base environment
+continues to use practice bots for ordinary local review.
 
-A profile has this shape; replace the placeholder with an actual entitled model:
+| Setting | Initial production value |
+| --- | --- |
+| Default AI | Alibaba Token Plan / `qwen3.8-flash` |
+| Additional AI | Kimi Code / `kimi-for-coding` |
+| Daily allowance across the site | 2,000 attempted model requests |
+| Daily allowance per visitor and table | 500 attempted model requests |
+| Maximum output per call | 512 tokens |
+| New browser tables per day | 100 |
 
-```json
-{
-  "id": "sponsored-alibaba",
-  "name": "AI on Tony",
-  "model": "replace-with-your-model-id",
-  "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-  "keySecret": "SPONSOR_ALIBABA_API_KEY",
-  "default": true
-}
+Visitors choose the supplied models without entering a key. Request limits
+are enforced by the existing durable broker; exhausted allowances use the
+existing practice fallback. Change these values in `env.production.vars`
+and redeploy so this branch remains the source of configuration.
+
+The production environment requires three Worker Secrets:
+`EIGHTY_GATEWAY_SECRET`, `SPONSOR_ALIBABA_API_KEY`, and
+`SPONSOR_KIMI_API_KEY`. The gateway value must be random and at least 32
+characters. Keep an existing gateway secret across ordinary deployments to
+preserve signed sessions. Profiles contain only the secret binding names.
+
+## Publish from this maintained branch
+
+```sh
+npx wrangler login
+npm run deploy:production:check
+npm run deploy:production -- --secrets-file output/cloudflare-production/secrets.json
 ```
 
-Kimi Code uses its configured `https://api.kimi.com/coding/v1` endpoint and
-`SPONSOR_KIMI_API_KEY`. Requests identify the real Eighty application. Provider
-specific model IDs and connection details must match the supplied credentials.
+The first deployment's JSON file contains the three named bindings and lives
+in ignored, mode-0600 local storage. It is passed directly to Wrangler;
+it is not part of the asset build, repository, browser bundle, or logs.
+For a worker that already has these secrets, subsequent code deployments use
+`npm run deploy:production` without uploading the file again. Wrangler retains
+omitted existing secrets.
+
+After login, confirm the Cloudflare account owns the `tonytheyang.com` zone
+and inspect any existing worker/domain binding before publishing. Use Workers
+Free; this configuration needs no container, R2 bucket, or paid-plan upgrade.
+Verify `/api/health`, a fresh private table, WebSocket presence, and a bounded
+real-model action on the actual hostname after deployment.
+
+For Cloudflare Git integration, connect this repository and the maintained
+`codex/tonytheyang-site` branch. Install with `npm ci --ignore-scripts` and use
+`npm run deploy:production` as the deploy command. Configure the Worker Secrets
+before enabling subsequent automatic builds. This does not publish the
+personal website or its private Lab.
+
+On September 12, 2026, both configured endpoints returned their model lists.
+A bounded two-request check used the real observation builder, hosted
+connection adapter, sponsored broker and action parser: Qwen and Kimi each
+returned a valid declaration action in about two seconds, without fallback.
+This is connectivity and protocol verification, not a playing-strength claim
+or a Cloudflare production verification. Private results are kept in ignored
+`output/cloudflare-production/`. Cloudflare account authorization and the
+remote deployment checks remain necessary before calling the service live.

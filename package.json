@@ -17,7 +17,9 @@
     "dev:free": "node scripts/dev-free.mjs",
     "build:free": "node scripts/build-worker-assets.mjs",
     "test:free-worker": "node scripts/verify-free-worker.mjs",
-    "deploy:container:check": "wrangler deploy --config wrangler.container.jsonc --dry-run"
+    "deploy:container:check": "wrangler deploy --config wrangler.container.jsonc --dry-run",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:production:check": "wrangler deploy --env production --dry-run"
   },
   "dependencies": {
     "ipaddr.js": "2.5.0"
