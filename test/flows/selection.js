@@ -29,7 +29,31 @@ async page=>{
   const target=await page.evaluate(id=>window.__handHover.restingRect(Number(id)),id);
   check(Number.isFinite(target.top)&&Number.isFinite(target.left),'responsive selected return target is not finite');
   const raised=await chosen.locator('.face').boundingBox();
+  const bodyPoint={x:raised.x+raised.width*.55,y:raised.y+raised.height*.65};
+  check(await page.evaluate(p=>window.__handHover.pick(p.x,p.y)?.id,bodyPoint)===Number(id),'the visible selected body targets a neighbour');
   await page.mouse.click(raised.x+12,raised.y+12);check(await chosen.getAttribute('aria-pressed')==='false','exposed selected strip cannot be clicked directly');
+  // The second contact must still toggle the same card after selection has
+  // lifted its lower edge away from that stationary contact point.
+  for(const fraction of [.65,.76]){
+    await page.mouse.move(10,10);await page.waitForTimeout(350);
+    const slot=await chosen.boundingBox();await page.mouse.move(slot.x+8,slot.y+slot.height*.7);await page.waitForTimeout(200);
+    const face=await chosen.locator('.face').boundingBox(),point={x:face.x+face.width*.55,y:slot.y+slot.height*fraction};
+    await page.mouse.move(point.x,point.y);await page.waitForTimeout(100);
+    for(const gap of [30,220]){
+      await page.mouse.click(point.x,point.y);await page.waitForTimeout(gap);
+      check(await page.locator('#playerHand').getAttribute('data-hovered-card')===id,'click collapsed the reading gap');
+      await page.mouse.click(point.x,point.y);check(await selected.count()===0,'stationary click switched card identities');
+    }
+  }
+  await page.mouse.move(10,10);await page.waitForTimeout(350);
+  const handIds=await slots.evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.card))),pairId=handIds.find(id=>id<54&&handIds.includes(id+54));
+  const paired=page.locator('.hand-slot[data-card="'+pairId+'"]'),pairSlot=await paired.boundingBox();
+  await page.mouse.move(pairSlot.x+8,pairSlot.y+pairSlot.height*.7);await page.waitForTimeout(200);
+  const pairFace=await paired.locator('.face').boundingBox();await page.mouse.move(pairFace.x+pairFace.width*.6,pairSlot.y+pairSlot.height*.7);await page.waitForTimeout(100);
+  await page.mouse.dblclick(pairFace.x+pairFace.width*.6,pairSlot.y+pairSlot.height*.7);
+  const pairIds=await selected.evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.card)).sort((a,b)=>a-b));
+  check(JSON.stringify(pairIds)===JSON.stringify([pairId,pairId+54]),'double click selected the underlying slot instead of the visible pair');
+  await page.getByRole('button',{name:'清空',exact:true}).click();
   for(const index of [9,12,15])await slots.nth(index).press('Space');
   await page.mouse.move(20,20);await page.waitForTimeout(550);
   const ids=await selected.evaluateAll(nodes=>nodes.map(n=>n.dataset.card));
@@ -44,6 +68,23 @@ async page=>{
   check(JSON.stringify(await selected.evaluateAll(nodes=>nodes.map(n=>n.dataset.card)))===JSON.stringify(ids),'cancelled drag changed selection');
   check(actions.length===0,'selection/return submitted cards');
   await page.screenshot({path:__ARTIFACTS__+'/selected-desktop.png'});
+  // Freeze only the test's return animation, then re-grab its front card.
+  // The other cards must finish their original return independently.
+  const regrabFrom=await selected.first().locator('.face').boundingBox();
+  await page.mouse.move(regrabFrom.x+12,regrabFrom.y+12);await page.mouse.down();await page.mouse.move(regrabFrom.x+60,regrabFrom.y-60,{steps:6});
+  await page.keyboard.press('Escape');await page.mouse.up();
+  await page.locator('.drag-ghost[data-returning=true]').evaluate(n=>{for(const a of n.getAnimations({subtree:true})){a.pause();a.currentTime=120;}});
+  await page.getByRole('button',{name:'清空',exact:true}).click();
+  const returning=page.locator('.drag-ghost[data-returning=true] .drag-card').last(),returningId=await returning.getAttribute('data-card-id'),returnRect=await returning.boundingBox();
+  await page.mouse.move(returnRect.x+returnRect.width*.6,returnRect.y+returnRect.height*.6);await page.mouse.down();
+  await page.mouse.move(returnRect.x+returnRect.width*.6+15,returnRect.y+returnRect.height*.6-25,{steps:4});
+  check(await page.locator('.drag-ghost:not([data-returning=true]) .drag-card').getAttribute('data-card-id')===returningId,'re-grab chose a slot beneath the returning card');
+  check(await page.locator('.drag-ghost[data-returning=true] .drag-card').count()===2,'re-grab removed unrelated returning cards');
+  await page.locator('.drag-ghost[data-returning=true]').evaluate(n=>{for(const a of n.getAnimations({subtree:true}))a.finish();});
+  check(await page.locator('.hand-slot[data-card="'+returningId+'"]').evaluate(n=>n.classList.contains('is-drag-source')),'old return revealed the newly held card');
+  await page.keyboard.press('Escape');await page.mouse.up();await page.waitForTimeout(500);
+  check(await page.locator('.drag-ghost').count()===0,'re-grab left a ghost behind');
+  for(const index of [9,12,15])await slots.nth(index).press('Space');await page.mouse.move(10,10);await page.waitForTimeout(500);
   const screens=[];
   for(const size of [{width:390,height:844},{width:844,height:390},{width:320,height:568}]){
     await page.setViewportSize(size);await selected.first().scrollIntoViewIfNeeded();await page.mouse.move(2,2);await page.waitForTimeout(500);
@@ -66,5 +107,5 @@ async page=>{
   await page.screenshot({path:__ARTIFACTS__+'/declaration-history.png'});await page.locator('#closeBook').click();
   await post('pause',{paused:true});
   check(errors.length===0,errors.join('\n'));
-  return {selectedSweepVariation:variation,selectedReturnTarget:target,raisedClick:true,groupReturn:true,screens,declarationHistory:true,consoleErrors:errors.length,liveModelCalls:0};
+  return {selectedSweepVariation:variation,selectedReturnTarget:target,raisedBodyClick:true,stationaryClicks:true,doubleClickPair:true,groupReturn:true,partialRegrab:true,screens,declarationHistory:true,consoleErrors:errors.length,liveModelCalls:0};
 }

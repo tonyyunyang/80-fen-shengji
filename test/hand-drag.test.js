@@ -25,6 +25,7 @@ function fixture({ picked = 1, reduced = false, accepted = true } = {}) {
     remove() { this.isConnected = false; if (this.parent) this.parent.children = this.parent.children.filter(node => node !== this); }
     querySelector(selector) { return this.children.find(node => node.classList.contains(selector.slice(1))) || null; }
     setAttribute(name, value) { this[name] = value; }
+    getAttribute(name) { return this[name]??null; }
     getBoundingClientRect() { return this.rect; }
     cloneNode() { const clone = new Node(this.className); clone.rect = this.rect; return clone; }
     animate(frames) {
@@ -48,10 +49,11 @@ function fixture({ picked = 1, reduced = false, accepted = true } = {}) {
     node.dataset.card = String(id); node.rect = { left: 50 + id * 40, top: 400, width: 40, height: 150 };
     face.rect = { ...node.rect, width: 100 }; node.append(face); root.append(node); return node;
   });
-  const state = { allowed: true, frozen: false, drops: [], toggles: [] };
+  const state = { allowed: true, frozen: false, drops: [], toggles: [],picked,adoptions:[],resumePoint:null };
   const hover = {
-    pick: () => ({ id: picked }), element: id => nodes[id],
-    freeze: () => { state.frozen = true; }, resume: () => { state.frozen = false; },
+    pick: () => ({ id: state.picked }), element: id => nodes[id],
+    freeze: () => { state.frozen = true; }, resume: point => { state.frozen = false;state.resumePoint=point; },
+    adoptPoses:poses=>state.adoptions.push(poses),
     restingRect: id => nodes[id]?.isConnected ? nodes[id].rect : null,
   };
   const drag = createHandDrag(root, {
@@ -166,6 +168,47 @@ test('grabbing again during a return cannot let the previous animation reveal th
   assert.equal(f.drag.active, true);
   assert.equal(f.ghost().children.filter(node => node.className === 'drag-card').length, 2);
   assert.ok([1,3].every(id => f.nodes[id].classList.contains('is-drag-source')));
+  f.drag.destroy();
+});
+
+test('clicks retain the contact identity; a drag release clears the pointer anchor',()=>{
+  for(const type of ['mouse','touch']){
+    const f=fixture();f.pointer('pointerdown',110,430,7,0,type);f.pointer('pointerup',110,430,7,0,type);
+    assert.deepEqual(f.state.resumePoint,{x:110,y:430,id:1,pointerType:type});
+    f.pointer('pointerdown');f.pointer('pointermove',240,180);f.drag.cancel();
+    assert.equal(f.state.resumePoint,null);f.drag.destroy();
+  }
+});
+test('a just-selected card can be played before its lift settles, without moving the painted pickup pose',()=>{
+  const f=fixture();f.nodes[1].setAttribute('aria-pressed','true');
+  f.nodes[1].querySelector('.face').rect=Object.create({left:90,top:400,width:100,height:150});
+  f.hover.restingRect=id=>({...f.nodes[id].rect,top:350});
+  f.pointer('pointerdown');f.pointer('pointermove',130,370);
+  assert.equal(f.ghost().style.top,'400px','the ghost starts at the actual visual pose');
+  f.pointer('pointerup',130,370);assert.deepEqual(f.state.drops,[[1,3]]);
+  f.drag.destroy();
+});
+test('a returned group hands its painted poses back before removing its ghost',async()=>{
+  const f=fixture();f.pointer('pointerdown');f.pointer('pointermove',240,180);f.drag.cancel();
+  const cards=f.ghost().children.filter(n=>n.className==='drag-card');
+  cards[0].rect={left:93,top:275,width:100,height:150};
+  await f.finish();assert.equal(f.ghost(),undefined);
+  assert.deepEqual(f.state.adoptions[0].map(p=>p.id),[1,3]);assert.equal(f.state.adoptions[0][0].left,93);
+  f.drag.destroy();
+  const hidden=fixture();hidden.pointer('pointerdown');hidden.pointer('pointermove',240,180);hidden.drag.cancel();hidden.document.hidden=true;hidden.document.dispatchEvent(new Event('visibilitychange'));
+  assert.deepEqual(hidden.state.adoptions,[]);hidden.drag.destroy();
+});
+test('re-grabbing one visible returning card leaves the rest in flight and preserves new ownership',async()=>{
+  const f=fixture();f.pointer('pointerdown');f.pointer('pointermove',240,180);f.drag.cancel();
+  const old=f.ghost(),finishReturn=f.animations.at(-1).finish,oldCards=old.children.filter(n=>n.className==='drag-card');
+  oldCards[0].rect={left:90,top:400,width:100,height:150};oldCards[1].rect={left:300,top:400,width:100,height:150};
+  f.selection.clear();f.state.picked=2; // The static picker disagrees with the visible returning card.
+  f.pointer('pointerdown',110,430);f.pointer('pointermove',220,190);
+  assert.deepEqual(f.state.adoptions[0].map(p=>p.id),[1]);
+  assert.deepEqual(old.children.filter(n=>n.className==='drag-card').map(n=>Number(n.dataset.cardId)),[3]);
+  finishReturn();await Promise.resolve();
+  assert.equal(f.drag.active,true);assert.ok(f.nodes[1].classList.contains('is-drag-source'));assert.equal(f.nodes[3].classList.contains('is-drag-source'),false);
+  assert.deepEqual(f.ghost().children.filter(n=>n.className==='drag-card').map(n=>Number(n.dataset.cardId)),[1]);
   f.drag.destroy();
 });
 

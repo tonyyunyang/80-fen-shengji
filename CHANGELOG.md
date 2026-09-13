@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Polish hand interaction over raised faces, preserve the reading gap during stationary clicks, and restore native double-click pair selection through pointer capture.
+- Continue cancelled-card motion smoothly into the hand, including partial re-grabs while other cards finish returning.
 - Enable music and all table sounds by default, starting after the first interaction; retain saved mute choices and independent volume controls.
 - Make Qwen 3.8 Flash the default hosted model; Max remains selectable.
 - Retain accepted declarations and overcalls as explicit AI reading evidence, and show single/pair strength plus exposed cards in table history.

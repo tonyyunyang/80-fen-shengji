@@ -73,14 +73,14 @@ test('the expanded reading fan has stable ownership in both sweep directions', a
   const {spreadHoverRows}=await import('../public/hand-hover.js');
   for(const count of [25,33]){
     const rows=makeHoverRows(Array.from({length:count},(_,index)=>({id:index,left:100+index*30,top:200,width:index===count-1?108:30,height:162,faceWidth:108})));
-    for(const direction of [1,-1]){
+    for(const direction of [1,-1])for(const options of [{},{selectedLift:48,hoverLift:34}]){
       const xs=Array.from({length:count*30+220},(_,i)=>i+10);if(direction<0)xs.reverse();
       let active=null;const visited=[];
       for(const x of xs){
-        active=pickHover(spreadHoverRows(rows,active),x,250,active);
+        active=pickHover(spreadHoverRows(rows,active),x,250,active,options);
         if(active&&active.id!==visited.at(-1))visited.push(active.id);
         for(let i=0;i<4;i++){
-          const again=pickHover(spreadHoverRows(rows,active),x,250,active);
+          const again=pickHover(spreadHoverRows(rows,active),x,250,active,options);
           assert.equal(again?.id,active?.id,'opening the fan cannot steal the pointer');active=again;
         }
       }
@@ -100,12 +100,20 @@ test('a retained hover identity is re-anchored after new cards reorder the hand'
  const row=spreadHoverRows(reordered,moved)[0];assert.equal(row.items[moved.index].id,active.id);
 });
 
-test('raised selected cards are directly clickable from above without stealing a resting row',()=>{
+test('a raised selected face owns its visible body, while the strip below it still browses the row',()=>{
   const rows=makeHoverRows(hand(5).map(c=>({...c,isSelected:c.id===2})));
   assert.equal(pickHover(rows,120,270,null,{selectedLift:48}).id,2);
   assert.equal(pickHover(rows,120,249,null,{selectedLift:48}),null);
   assert.equal(pickHover(rows,78,270,null,{selectedLift:48}),null);
-  assert.equal(pickHover(rows,150,330,null,{selectedLift:48}).id,3);
+  assert.equal(pickHover(rows,150,330,null,{selectedLift:48}).id,2);
+  assert.equal(pickHover(rows,150,420,null,{selectedLift:48}).id,3);
+});
+
+test('the actively raised face has priority where it visibly overlaps another selection',()=>{
+  const rows=makeHoverRows(hand(5).map(c=>({...c,isSelected:c.id===2})));
+  const active={id:3,row:0,index:3,coordinate:3};
+  assert.equal(pickHover(rows,150,330,active,{selectedLift:48,hoverLift:34}).id,3);
+  assert.equal(pickHover(rows,150,258,active,{selectedLift:48,hoverLift:34}).id,2);
 });
 test('selection motion settles equally across frame rates and reverses from its current pose',()=>{
   const results=[];

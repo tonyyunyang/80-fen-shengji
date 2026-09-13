@@ -1042,15 +1042,18 @@ function bindHand() {
   }
   layoutHand();
   handDrag?.refresh();
+  // Pointer capture retargets the native double click to the hand container.
+  // Pair selection must use the same visible-card picker as individual clicks.
+  if(root)root.ondblclick=event=>{
+    if(!canPlay()||handDrag?.active)return;
+    const target=event.target.closest?.('.hand-slot');
+    const id=event.detail===0?(target?Number(target.dataset.card):null):handHover?.pick(event.clientX,event.clientY)?.id;
+    if(id!=null)setSelection(selectPair(latest.game.hand,selected,Number(id)));
+  };
   document.querySelectorAll('.hand-slot').forEach((button) => {
     button.onclick = (event) => {
       if (event.detail === 0 && canPlay() && !handDrag?.active)
         toggleSelection(Number(button.dataset.card), event.shiftKey);
-    };
-    button.ondblclick = () => {
-      if (canPlay()) {
-        setSelection(selectPair(latest.game.hand, selected, Number(button.dataset.card)));
-      }
     };
     button.onfocus = () => {
       focusCard = Number(button.dataset.card);
