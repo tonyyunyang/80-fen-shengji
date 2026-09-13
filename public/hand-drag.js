@@ -1,7 +1,7 @@
 import {isPlayIntent} from './play-intent.js';
 
-// Capture the carried identities at pointer-down. Moving faces never participate
-// in hit testing, and only the caller can validate/submit the complete group.
+// Capture carried identities on press. Hover uses stable targets; a returning
+// ghost can be re-grabbed at its painted pose. The caller validates the group.
 export function createHandDrag(root, {
   hover, allowed, toggle, drop, changed, cards = id => [id], preview = () => null,
   reducedMotion = () => false,
@@ -11,8 +11,20 @@ export function createHandDrag(root, {
   const returning = new Map();
   const target = () => document.getElementById('dropTarget');
   const viewport = () => [window.innerWidth, window.innerHeight, window.visualViewport?.width, window.visualViewport?.height, window.visualViewport?.scale];
-  const over = (x, y) => gesture && isPlayIntent(gesture.rect,x-gesture.x,y-gesture.y,dropBox,gesture.over);
+  const over = (x, y) => gesture && isPlayIntent(gesture.intentRect,x-gesture.x,y-gesture.y,dropBox,gesture.over);
   const transform = (x, y, angle = 0) => 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + angle + 'deg)';
+  const angleOf=node=>{
+    const values=window.getComputedStyle(node).transform.match(/^matrix(?:3d)?\(([^)]+)\)$/)?.[1].split(',').map(Number);
+    return values?Math.atan2(values[1],values[0])*180/Math.PI:0;
+  };
+  function handBack(items,held){
+    if(!hover.adoptPoses||!held?.isConnected||!root.isConnected||reducedMotion()||document.hidden)return;
+    const parentAngle=angleOf(held);
+    hover.adoptPoses(items.filter(item=>item.node.isConnected&&item.ghost?.isConnected).map(item=>{
+      const rect=item.ghost.getBoundingClientRect();
+      return {id:item.id,left:rect.left,top:rect.top,width:rect.width,height:rect.height,angle:parentAngle+angleOf(item.ghost)};
+    }));
+  }
 
   function updateTarget() {
     const node = target();
@@ -31,7 +43,7 @@ export function createHandDrag(root, {
     }
   }
 
-  function release() {
+  function release(point = null) {
     const current = gesture, held = ghost;
     gesture = null; ghost = null; dropBox = null;
     if (current && root.hasPointerCapture?.(current.pointerId)) root.releasePointerCapture(current.pointerId);
@@ -39,22 +51,31 @@ export function createHandDrag(root, {
     const node = target();
     node?.classList.remove('over');
     if (node) delete node.dataset.dropState;
-    hover.resume(); changed?.();
+    hover.resume(point); changed?.();
     return { current, held };
   }
 
   function settle(current, held, played = false, immediate = false) {
     if (!current) return;
     let cleaned = false, animation;
-    const clean = () => {
+    const remaining=()=>current.items.filter(item=>!item.taken);
+    const clean = (transfer = true) => {
       if (cleaned) return;
-      cleaned = true; animation?.cancel();
+      cleaned = true;
+      if(transfer&&!played&&!immediate)handBack(remaining(),held);
+      animation?.cancel();
       held?.remove();
-      for (const item of current.items) {
+      for (const item of remaining()) {
         item.flight?.cancel();
         item.node.classList.remove('is-drag-source');
       }
       returning.delete(clean);
+    };
+    clean.take=ids=>{
+      const taken=remaining().filter(item=>ids.includes(item.id));
+      handBack(taken,held);
+      for(const item of taken){item.taken=true;item.flight?.cancel();item.ghost?.remove();item.node.classList.remove('is-drag-source');}
+      const rest=remaining();if(rest.length)returning.set(clean,rest);else clean(false);
     };
     if (!held || immediate || reducedMotion() || !root.isConnected) { clean(); return; }
     returning.set(clean, current.items);
@@ -86,7 +107,7 @@ export function createHandDrag(root, {
   }
 
   function cancel(immediate = false) {
-    if (immediate) for (const clean of [...returning.keys()]) clean();
+    if (immediate) for (const clean of [...returning.keys()]) clean(false);
     if (!gesture) return;
     const { current, held } = release();
     settle(current, held, false, immediate);
@@ -94,10 +115,23 @@ export function createHandDrag(root, {
 
   function down(event) {
     if (event.button !== 0 || gesture || !allowed()) return;
-    const hit = hover.pick(event.clientX, event.clientY), node = hit && hover.element(hit.id);
+    let hit=null;
+    // A returning card can be grabbed at its visible position. These geometry
+    // reads occur only on a press, never during continuous hover picking.
+    for(const items of [...returning.values()].reverse()){
+      for(const item of [...items].reverse()){
+        const r=item.ghost?.isConnected&&item.ghost.getBoundingClientRect();
+        if(r&&event.clientX>=r.left&&event.clientX<=r.left+r.width&&event.clientY>=r.top&&event.clientY<=r.top+r.height){hit={id:item.id};break;}
+      }
+      if(hit)break;
+    }
+    hit ||= hover.pick(event.clientX, event.clientY);
+    const node = hit && hover.element(hit.id);
     if (!node || node.disabled) return;
-    for (const clean of [...returning.keys()]) clean();
     const id = Number(node.dataset.card), ids = [...new Set(cards(id))];
+    // Re-grabbing one member must not teleport the other returning cards or
+    // let an older animation later reveal a card held by the new gesture.
+    for(const [clean,items] of returning)if(items.some(item=>ids.includes(item.id)))clean.take(ids);
     const items = ids.map(id => {
       const node = hover.element(id), face = node?.querySelector('.face');
       return face && !node.disabled ? { id, node, face, rect: face.getBoundingClientRect() } : null;
@@ -105,7 +139,13 @@ export function createHandDrag(root, {
     // Never silently turn a missing member into a smaller play.
     if (!ids.includes(id) || items.some(item => !item)) return;
     if (event.pointerType !== 'touch') event.preventDefault();
-    gesture = { pointerId: event.pointerId, id, ids, items, rect: items.find(item => item.id === id).rect,
+    const rect=items.find(item=>item.id===id).rect;
+    const selectedTarget=node.getAttribute?.('aria-pressed')==='true'?hover.restingRect(id):null;
+    // Keep the painted pickup pose, but don't make a just-selected card harder
+    // to play merely because its lift has not finished yet.
+    // DOMRect dimensions are prototype getters, not enumerable properties.
+    const intentRect=selectedTarget?{left:rect.left,top:Math.min(rect.top,selectedTarget.top),width:rect.width,height:rect.height}:rect;
+    gesture = { pointerId: event.pointerId, id, ids, items, rect, intentRect,
       pointerType: event.pointerType, viewport: viewport(), x: event.clientX, y: event.clientY, dx: 0, dy: 0, dragging: false, shift: event.shiftKey };
     hover.freeze(); root.setPointerCapture(event.pointerId);
   }
@@ -168,7 +208,8 @@ export function createHandDrag(root, {
     // Never submit against the old drop geometry in that interval.
     if (viewport().some((value, index) => value !== gesture.viewport[index])) { cancel(true); return; }
     const validTarget = gesture.dragging && over(event.clientX, event.clientY);
-    const { current, held } = release();
+    const clickPoint=!gesture.dragging?{x:event.clientX,y:event.clientY,id:gesture.id,pointerType:gesture.pointerType}:null;
+    const { current, held } = release(clickPoint);
     let played = false;
     if (allowed()) {
       if (!current.dragging) toggle(current.id, current.shift);
