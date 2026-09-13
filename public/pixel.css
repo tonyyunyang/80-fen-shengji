@@ -1059,6 +1059,9 @@ body[data-four-color='on'] .face[data-suit='C'] {
   animation: card-bob 4.5s ease-in-out infinite;
   animation-delay: var(--bob-delay, 0s);
 }
+.hand-slot[aria-pressed='true'] .face {
+  animation: none;
+}
 .hand[data-hovered-card] .face,
 .dragging-card .hand-slot .face,
 body:has(dialog[open]) .hand-slot .face {

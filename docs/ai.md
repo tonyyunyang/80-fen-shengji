@@ -23,6 +23,8 @@ The default guide is Chinese; English is available per seat. Both use correspond
 
 Card play now includes explicit partnership comparisons: whether a teammate's winning card can still be beaten, safe point feeds, cheaper support that preserves the teammate's lead, and covers that protect points or secure the 80-point threshold. Public leads and proven voids help interpret previous play; they are not treated as secret signals. These comparisons guide the model without replacing its choice or removing legal actions.
 
+The reading layer also identifies likely point-cashing windows before the last opponent plays. It keeps a chronological ledger of accepted declarations and overcalls, including exposed cards that were later played. A called suit alone does not prove length. Exact deductions remain separate from a uniform-allocation reference for following/ruff risks; those estimates are neither known hands nor calibrated probabilities. Short point holdings, entries, structures and opportunities for a void partner to discard inform the whole-hand plan. Known voids and zero-point tricks receive explicit risk/cost reminders. See the [reading study](research/partnership-reading-2026-09-13.md).
+
 The Node server also offers **experimental endgame analysis**, which can be disabled per seat. From twelve cards remaining, it may compare eight plausible hidden allocations consistent with public evidence. These are uncertain forecasts, not real hidden hands or calibrated win probabilities. A bounded worker keeps this work off the dealing clock. The hosted Cloudflare game uses the partnership facts with this optional Node analysis disabled.
 
 ## Cost and failures

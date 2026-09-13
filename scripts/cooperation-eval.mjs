@@ -1,23 +1,23 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {requestAction,buildRequest} from '../src/providers.js';
+import {requestAction,buildRequest,CONTEXT_PROFILES} from '../src/providers.js';
 import {classify,followError,resolveCards} from '../src/rules.js';
 import {cooperationCases,matchesAccepted} from '../test/fixtures/cooperation-cases.mjs';
 
 // No retries or practice fallback in the tactical score. Every failed attempt
 // remains in the denominator. Pass only the evaluator's provider credentials.
-export async function runCooperationEvaluation({live=false,env={},maxMs=8*60_000,call=requestAction,onProgress=async()=>{}}={}){
+export async function runCooperationEvaluation({live=false,env={},maxMs=8*60_000,profiles=['expert-facts-zh','expert-cooperate-zh'],cases=cooperationCases(),call=requestAction,onProgress=async()=>{}}={}){
   if(!live)throw new Error('Tactical API evaluation requires explicit live opt-in');
   if(!env.QWEN_API_KEY||!env.QWEN_BASE_URL)throw new Error('Configure the evaluator provider locally');
   if(!Number.isFinite(maxMs)||maxMs<=0||maxMs>8*60_000)throw new Error('Tactical wall limit is eight minutes');
+  if(profiles.length!==2||new Set(profiles).size!==2||profiles.some(p=>!CONTEXT_PROFILES.includes(p))||!Array.isArray(cases)||!cases.length||cases.length*profiles.length>48)throw new Error('Choose two supported profiles and at most 24 tactical positions');
   const started=Date.now(),deadline=started+maxMs;
-  const profiles=['expert-facts-zh','expert-cooperate-zh'];
   const report={version:1,model:'qwen3.8-max',profiles,startedAt:new Date(started).toISOString(),
-    limits:{requests:48,wallMs:maxMs,decisionMs:12000,outputTokens:512,requestBytes:96000},
-    design:'Twelve synthetic tactical positions, each rotated by two seats. Acceptable moves were written before model calls, separately from the cooperation scorer. Alternate profile order per position. No repair, fallback, secret hands, or whole-deal win-rate claim.',requests:[]};
-  for(const [index,item] of cooperationCases().entries())for(const profile of index%2?[...profiles].reverse():profiles){
-    if(Date.now()>=deadline||report.requests.length>=48)break;
+    limits:{requests:cases.length*profiles.length,wallMs:maxMs,decisionMs:12000,outputTokens:512,requestBytes:96000},
+    design:'Synthetic tactical positions with predeclared acceptable actions, separately from the scorer. Alternate profile order per position. No repair, fallback, secret hands, or whole-deal win-rate claim.',requests:[]};
+  for(const [index,item] of cases.entries())for(const profile of index%2?[...profiles].reverse():profiles){
+    if(Date.now()>=deadline||report.requests.length>=report.limits.requests)break;
     const row={case:item.id,profile,purpose:item.purpose,status:'pending',passed:false};
     report.requests.push(row);await onProgress(report);
     try{
@@ -33,7 +33,7 @@ export async function runCooperationEvaluation({live=false,env={},maxMs=8*60_000
     await onProgress(report);
   }
   report.summary=profiles.map(profile=>{const rows=report.requests.filter(r=>r.profile===profile);return {profile,attempts:rows.length,passed:rows.filter(r=>r.passed).length,failed:rows.filter(r=>r.status==='failed').length};});
-  report.stopReason=report.requests.length===48?'schedule_complete':'wall_time_guard';
+  report.stopReason=report.requests.length===report.limits.requests?'schedule_complete':'wall_time_guard';
   report.finishedAt=new Date().toISOString();report.wallMs=Date.now()-started;await onProgress(report);return report;
 }
 

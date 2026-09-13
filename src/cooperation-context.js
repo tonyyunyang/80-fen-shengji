@@ -14,7 +14,7 @@ const minima=(rows,key)=>{
 // A conservative superset of possible holdings. Revealed dealer cards can be
 // in that dealer's hand OR the kitty, never another seat's hand. Unknown cards
 // are not assigned to a real opponent or sampled as if they were known.
-function possibleHoldings(view,notebook,seat){
+export function possibleHoldings(view,notebook,seat){
   const gone=new Set([...publicPlays(view).flatMap(p=>p.cards),...view.hand,...(view.buriedKnown||[])].map(c=>c.id));
   const owners=new Map();
   for(const d of view.declarations||[])for(const card of d.cards||[])if(!gone.has(card.id))owners.set(card.id,d.seat);
@@ -27,7 +27,7 @@ function possibleHoldings(view,notebook,seat){
   return {pool,fixed,size,voids,consistent};
 }
 
-function matchingPackets(pool,lead,trump){
+export function matchingPackets(pool,lead,trump){
   if(lead.type==='single')return {packets:pool.map(c=>[c]),complete:true};
   const pairs=groups(pool).filter(g=>g.length===2);
   if(lead.type==='pair')return {packets:pairs,complete:true};
