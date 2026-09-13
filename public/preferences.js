@@ -1,6 +1,6 @@
 export const DEFAULT_PREFERENCES = Object.freeze({
   fourColor: true, motion: true, learning: false, texture: true, hints: true,
-  dragToPlay: true, sound: false, volume: 35, music: false, musicVolume: 30,
+  dragToPlay: true, sound: false, volume: 50, music: false, musicVolume: 30,
   handSize: 1, tableSize: 1, textSize: 1, effects: 'full',
 });
 

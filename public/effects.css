@@ -155,7 +155,7 @@ body[data-effects=full] .hand-slot[data-trump=true] .face:before{border-color:#e
 .hand-actions .quiet{background:linear-gradient(#30564e,#23473e);border-color:#91ad8570}
 .hand-actions .secondary{background:linear-gradient(#525267,#414055);border-color:#a4a293}
 .drop-target{border-image:none}
-.dragging-card .drop-target.over[data-drop-state=ready]{background:#b6eedb16;border-color:#b0edcf;box-shadow:inset 0 0 40px #b2df9a13,0 0 25px #b4e4b512;color:#d8f6d8}
+.dragging-card .drop-target.over[data-drop-state=ready]{background:radial-gradient(ellipse at 50% 85%,#b6eedb26,transparent 75%);box-shadow:none;color:transparent}
 .burial-progress i{transition:background-color .15s,box-shadow .15s}
 .burial-progress .filled{box-shadow:0 0 10px #e5be6b20,2px 3px 0 #13272f80}
 .effects-layer{position:absolute;inset:0;z-index:45;pointer-events:none;overflow:clip;contain:strict}

@@ -161,9 +161,29 @@ controls have their own row. */
 .bidding-footer:empty {
   display: none;
 }
+.pixel-game:is([data-phase='dealing'],[data-phase='closing']) .bid-options {min-height: 44px;}
+.pixel-game[data-layout='desktop']:is([data-phase='dealing'],[data-phase='closing']) .seat-hand {min-height: calc(44px * var(--text-scale));}
 .drop-target {
   z-index: 24;
+  border: 0;
+  border-radius: 50% 50% 18% 18%;
+  background: radial-gradient(ellipse at 50% 85%,#bce5bb14,transparent 70%);
+  color: transparent;
+  font-size: 0 !important;
+  transition: opacity .14s ease-out;
 }
+.dragging-card .drop-target {opacity: .35;}
+.dragging-card .drop-target.over {background: radial-gradient(ellipse at 50% 85%,#bce5bb28,transparent 75%);opacity: 1;color: transparent;}
+.dragging-card .drop-target.over[data-drop-state='invalid'] {background: radial-gradient(ellipse at 50% 85%,#d99d9820,transparent 75%);}
+.drag-hint {
+  position: absolute;left: 50%;top: calc(100% + 14px);transform: translateX(-50%);
+  width: max-content;max-width: min(290px,80vw);padding: 7px 12px;border-radius: 20px;
+  color: #ece6ce;background: #182d2be8;border: 1px solid #c5ccb747;
+  font-size: 12px;line-height: 1.4;text-align: center;box-shadow: 0 4px 14px #06151328;
+}
+.drag-ghost[data-over='true'][data-drop-state='ready'] .drag-hint {border-color: #afd9b2;color: #e7ffe6;}
+.drag-ghost[data-over='true'][data-drop-state='invalid'] .drag-hint {border-color: #d79b91;color: #ffe0da;}
+@media (prefers-reduced-motion: reduce) {.drop-target {transition: none;}}
 /* The opposite seat uses the logical scene width at every viewport size. */
 .seat.north {
   display: grid;
@@ -311,6 +331,7 @@ body[data-screen='game'] {
   overflow: clip;
   touch-action: none;
 }
+.hand-slot .reflow {display: block;width: var(--card-w);height: var(--card-h);pointer-events: none;}
 
 /* The same table and hand render at native touch sizes on phones. Only the
    hand scrolls horizontally; the controls stay anchored in the viewport. */

@@ -6,20 +6,26 @@ export const MUSIC_TRACK = Object.freeze({
 // One decoded, looping buffer on the player's device. No frame-by-frame
 // synthesis, server timer, or provider call is needed for background music.
 export function createTableMusic(preferences, { getContext, document: doc = document, fetchImpl = fetch, onStatus = () => {} } = {}) {
-  let buffer, source, voiceGain, gain, filter, loading, controller, position = 0, startedAt = 0;
+  let buffer, source, voiceGain, gain, filter, duckGain, loading, controller, position = 0, startedAt = 0;
+  let duckUntil=0,duckLevel=1;
   let muffled = true, status = 'off', retryAt = 0;
   const allowed = () => preferences().music && preferences().musicVolume > 0 && !doc.hidden;
   const announce = value => { if (status !== value) { status = value; onStatus(value); } };
   const length = () => Math.min(buffer?.duration || MUSIC_TRACK.seconds, MUSIC_TRACK.seconds);
+  function resetDuck(){
+    const context=getContext();
+    if(duckGain&&context){duckGain.gain.cancelScheduledValues(context.currentTime);duckGain.gain.setValueAtTime(1,context.currentTime);}
+    duckUntil=0;duckLevel=1;
+  }
   function stop() {
     if (!source) return;
     const context = getContext();
     position = (position + Math.max(0, context.currentTime - startedAt)) % length();
     const old = source, oldGain = voiceGain; source = null; voiceGain = null;
-    if (doc.hidden || context.state !== 'running') { try { old.stop(); } catch {} old.disconnect(); oldGain.disconnect(); }
+    if (doc.hidden || context.state !== 'running') { try { old.stop(); } catch {} old.disconnect(); oldGain.disconnect();resetDuck(); }
     else {
       oldGain.gain.setTargetAtTime(0, context.currentTime, .012);
-      old.onended = () => { old.disconnect(); oldGain.disconnect(); };
+      old.onended = () => { old.disconnect(); oldGain.disconnect();if(!source)resetDuck(); };
       try { old.stop(context.currentTime + .07); } catch { old.onended(); }
     }
   }
@@ -60,9 +66,10 @@ export function createTableMusic(preferences, { getContext, document: doc = docu
     if (!gain) {
       gain = context.createGain(); gain.gain.value = 0;
       filter = context.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = .55;
-      filter.connect(gain); gain.connect(context.destination);
+      duckGain=context.createGain();duckGain.gain.value=1;
+      filter.connect(duckGain);duckGain.connect(gain);gain.connect(context.destination);
     }
-    source = context.createBufferSource(); source.buffer = buffer; voiceGain = context.createGain();
+    resetDuck();source = context.createBufferSource(); source.buffer = buffer; voiceGain = context.createGain();
     voiceGain.gain.value = 0; voiceGain.gain.setTargetAtTime(1, context.currentTime, .02);
     source.loop = true; source.loopStart = 0; source.loopEnd = length(); source.connect(voiceGain); voiceGain.connect(filter);
     startedAt = context.currentTime; source.start(0, position % length());
@@ -70,8 +77,20 @@ export function createTableMusic(preferences, { getContext, document: doc = docu
   }
   return {
     sync,
+    duck(kind){
+      const context=getContext();if(!source||!duckGain||context?.state!=='running'||!allowed())return;
+      const settings=kind==='deal'?[.82,.07,.12]:kind==='card'?[.9,.04,.10]:['win','finish'].includes(kind)?[.55,.55,.25]:[.64,.20,.20];
+      const now=context.currentTime,param=duckGain.gain;
+      const level=now<duckUntil?Math.min(duckLevel,settings[0]):settings[0];
+      const until=Math.max(duckUntil,now+settings[1]);
+      if(param.cancelAndHoldAtTime)param.cancelAndHoldAtTime(now);
+      else {const value=param.value;param.cancelScheduledValues(now);param.setValueAtTime(value,now);}
+      param.linearRampToValueAtTime(level,now+.012);
+      param.setValueAtTime(level,until);param.setTargetAtTime(1,until,settings[2]);
+      duckLevel=level;duckUntil=until;
+    },
     update(options = {}) { muffled = options.muffled !== false; sync(); },
     state: () => status,
-    dispose() { controller?.abort(); stop(); filter?.disconnect(); gain?.disconnect(); },
+    dispose() { controller?.abort(); stop(); filter?.disconnect(); duckGain?.disconnect(); gain?.disconnect(); },
   };
 }

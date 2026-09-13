@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Double the default dealing pace to 250ms per card; retain 500/700ms options and the shared five-second closing window.
+- Freeze each deal flight's trajectory and let adjacent flights overlap, reserve declaration space, and ease hand reflow after public bids.
+- Strengthen paper and card-landing sounds, preserve the final play's accent, and briefly lower music under effects without altering the approved recording.
+- Recognize an upward lift across the hand edge over the wider felt area, with a soft highlight and carried-card hint; return-to-hand cancellation and exact-group validation remain.
+
 - Merge the website branch's shared improvements into `main`, while retaining `codex/tonytheyang-site` as the production deployment channel.
 - Play online at **[eighty.tonytheyang.com](https://eighty.tonytheyang.com/)**. Add direct links to the bilingual READMEs, player guides and repository/release metadata.
 - Keep larger, horizontally scrollable phone hands with reachable controls in portrait and short landscape; horizontal swipes do not select or play, and upward drags retain move validation.

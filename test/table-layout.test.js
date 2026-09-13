@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tableLayout, fanOverlap, hasLiveDealFlight, initialSceneScale, fitScene } from '../public/table-layout.js';
+import { tableLayout, fanOverlap, initialSceneScale, fitScene } from '../public/table-layout.js';
 
 const base={width:1408,height:928,northBottom:170,sideEdge:190,sideHeight:210,hudBottom:315,handHeight:338,handBottom:18,cardWidth:101,captionHeight:22.5};
 test('played rows, captions and the entire hand hover area remain disjoint as preferences grow',()=>{
@@ -38,18 +38,6 @@ test('wide multi-card fans tighten their overlap without resizing individual fac
     assert.ok(134-overlap>=134*.25,'the left rank/suit index remains exposed');
   }
 });
-
-test('old flight DOM is inert after a restart clears the live deal clock',()=>{
-  const game={dealing:'continuous',phase:'dealing',drawSeat:1},clock={lastDrawAt:1000};
-  assert.equal(hasLiveDealFlight(game,clock,1100),true);
-  assert.equal(hasLiveDealFlight(game,null,1100),false);
-  assert.equal(hasLiveDealFlight(null,clock,1100),false);
-  assert.equal(hasLiveDealFlight({...game,phase:'bury'},clock,1100),false);
-  assert.equal(hasLiveDealFlight({...game,dealing:'ordered'},clock,1100),false);
-  assert.equal(hasLiveDealFlight({...game,drawSeat:null},clock,1100),false);
-  assert.equal(hasLiveDealFlight(game,clock,1400),false);
-});
-
 
 test('scene camera contains large-card scenes across viewport resolutions',()=>{
   for(const width of [374,544,768,992,1248,1888])for(const height of [568,688,868,1048]){

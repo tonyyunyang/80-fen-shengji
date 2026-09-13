@@ -34,7 +34,7 @@ test('Qwen 3.8 Flash remains the cheapest default on both published token rates,
 });
 test('an API seat without an explicit provider/model defaults to Qwen 3.8 Flash', () => {
   const config = validateConfig({ seats: [{ kind: 'human' }, { kind: 'api' }, { kind: 'api' }, { kind: 'api' }] }, { qwen: true });
-  assert.equal(config.dealing, 'continuous'); assert.equal(config.dealIntervalMs, 500);
+  assert.equal(config.dealing, 'continuous'); assert.equal(config.dealIntervalMs, 250);
   assert.ok(config.seats.slice(1).every(seat => seat.provider === 'qwen' && seat.model === 'qwen3.8-flash'));
 });
 test('draws never create a blocking declaration turn, and closure preserves all 108 cards', () => {
@@ -43,6 +43,17 @@ test('draws never create a blocking declaration turn, and closure preserves all 
   assert.equal(s.phase, 'closing'); assert.equal(s.pending, null);
   assert.deepEqual(s.hands.map(h => h.length), [25, 25, 25, 25]);
   s = closeBidding(s); assert.equal(s.pending.phase, 'bury'); assertConservation(s);
+});
+test('default dealing takes 25 seconds, independent of hung bids, then keeps a full five-second closing window',async t=>{
+  t.mock.timers.enable({apis:['setTimeout','Date']});
+  const s=runner(()=>new Promise(()=>{})),times=[];t.after(()=>s.stop());
+  const started=Date.now();s.listeners.add(()=>{if(s.state.dealt>(times.at(-1)?.dealt||0))times.push({dealt:s.state.dealt,at:Date.now()-started});});
+  s.schedule();
+  for(let i=1;i<=100;i++){t.mock.timers.tick(250);await flush();assert.equal(s.state.dealt,i);}
+  assert.deepEqual(times.map(row=>row.at),Array.from({length:100},(_,i)=>(i+1)*250));
+  assert.equal(s.state.phase,'closing');assert.equal(s.bidding.closeAt-Date.now(),5000);
+  assert.equal(validateConfig({seats,dealIntervalMs:500},{qwen:true}).dealIntervalMs,500);
+  assert.equal(validateConfig({seats,dealIntervalMs:700},{qwen:true}).dealIntervalMs,700);
 });
 test('first single wins; late single is silent, cannot be auto-upgraded, and a new pair can counter', () => {
   let s = draw(game(), 4);

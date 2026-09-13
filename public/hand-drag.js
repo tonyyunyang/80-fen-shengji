@@ -1,3 +1,5 @@
+import {isPlayIntent} from './play-intent.js';
+
 // Capture the carried identities at pointer-down. Moving faces never participate
 // in hit testing, and only the caller can validate/submit the complete group.
 export function createHandDrag(root, {
@@ -9,7 +11,7 @@ export function createHandDrag(root, {
   const returning = new Map();
   const target = () => document.getElementById('dropTarget');
   const viewport = () => [window.innerWidth, window.innerHeight, window.visualViewport?.width, window.visualViewport?.height, window.visualViewport?.scale];
-  const over = (x, y) => dropBox && x >= dropBox.left && x <= dropBox.right && y >= dropBox.top && y <= dropBox.bottom;
+  const over = (x, y) => gesture && isPlayIntent(gesture.rect,x-gesture.x,y-gesture.y,dropBox,gesture.over);
   const transform = (x, y, angle = 0) => 'translate3d(' + x + 'px,' + y + 'px,0) rotate(' + angle + 'deg)';
 
   function updateTarget() {
@@ -21,7 +23,12 @@ export function createHandDrag(root, {
       node.dataset.dropState = hint.valid ? 'ready' : 'invalid';
     }
     dropBox = node.getBoundingClientRect();
-    node.classList.toggle('over', !!over(gesture.x + gesture.dx, gesture.y + gesture.dy));
+    gesture.over=!!over(gesture.x + gesture.dx, gesture.y + gesture.dy);
+    node.classList.toggle('over',gesture.over);
+    if(ghost&&hint){
+      ghost.dataset.dropState=hint.valid?'ready':'invalid';ghost.dataset.over=String(gesture.over);
+      ghost.querySelector('.drag-hint').textContent=gesture.over?hint.label:hint.guide||hint.label;
+    }
   }
 
   function release() {
@@ -54,6 +61,7 @@ export function createHandDrag(root, {
     for (const item of current.items) if (item.node.isConnected) item.node.classList.add('is-drag-source');
     held.dataset.returning = String(!played);
     held.querySelector('.drag-count')?.remove();
+    held.querySelector('.drag-hint')?.remove();
     const from = held.style.transform || transform(0, 0);
     if (played) {
       animation = held.animate([{ transform: from, opacity: 1 }, { transform: from + ' scale(.96)', opacity: 0 }],
@@ -135,6 +143,7 @@ export function createHandDrag(root, {
       badge.style.left = ((items.length - 1 - grabbed) * step + rect.width * .85) + 'px';
       ghost.append(badge);
     }
+    const hint=document.createElement('span');hint.className='drag-hint';ghost.append(hint);
     document.body.append(ghost); updateTarget();
   }
 
@@ -149,7 +158,7 @@ export function createHandDrag(root, {
     if (ghost) {
       const angle = reducedMotion() ? 0 : Math.max(-5, Math.min(5, gesture.dx * .018));
       ghost.style.transform = transform(gesture.dx, gesture.dy, angle);
-      target()?.classList.toggle('over', !!over(event.clientX, event.clientY));
+      updateTarget();
     }
   }
 

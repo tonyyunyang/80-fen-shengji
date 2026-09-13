@@ -28,9 +28,13 @@ Dealing gives each player 25 cards. The dealer temporarily has 33 after taking t
 
 Resting slots are independent of moving card faces. Hover opens a full-card reading gap and picks against its stable target geometry; ownership does not follow animated DOM rectangles. The hover controller caches geometry and uses a continuous, time-based lift across neighboring cards. It stops JavaScript frames when settled. Selection retains physical identities. Live style attributes and immutable face subtrees survive public state updates, avoiding a reset of the hover pose.
 
-A pointer drag freezes the hand's hover poses. Starting on a selected card captures the entire selection in hand order; starting on an unselected card captures only that card. The carried faces gather into a compact fan with a count badge, leaving other cards still. The drop target describes the complete carried play and its legality. A valid drop submits that exact group once through the validated endpoint; an incompatible drop unfolds every card back to its own slot and preserves the selection. A quick release starts its return from the current animated pose, without snapping. Public state redraws preserve the carried identities and source marks.
+A pointer drag freezes the hand's hover poses. Starting on a selected card captures the entire selection in hand order; starting on an unselected card captures only that card. The carried faces gather into a compact fan with a count badge. A deliberate upward lift across the hand edge enters the wider felt area; the fingertip need not reach a small central rectangle. A soft glow and a hint beneath the packet describe the complete play and its legality. Returning to the hand cancels; a small wobble or horizontal swipe cannot submit. A valid release submits exactly once through the validated endpoint; incompatible drops return every card and preserve selection. Public redraws preserve carried identities, and returns begin at the current animated pose.
 
 Click still selects and lifts in hand; there is no duplicate preview on the table. The Play button and Enter still confirm selected groups. Burial uses eight progress marks and the selected point total, then confirms all eight cards with the button. Disabling drag-to-play makes drops select instead. Escape, lost capture, blur and pointer cancellation return the entire group without submitting. Tab cancels before moving focus; selection keys cannot change a held group. A resize or hidden page cancels immediately; the release handler also rejects changed viewport dimensions or zoom before a delayed resize event arrives. Reduced motion keeps the group interaction but removes decorative tilt, gathering and return animations.
+
+![A short upward lift enters the felt, with a carried-card hint instead of a central target box](media/upward-release.png)
+
+Captured from a synthetic local deal using the real renderer and pointer gesture; no provider calls.
 
 Click toggles a card, double-click selects its matching pair, Shift-click/Shift-arrow select ranges, arrows/Home/End move focus, Space selects and Enter confirms a valid play. Escape cancels a drag or selection before opening the pause menu. Validation explains illegal suit/count/structure choices; the server remains authoritative for all actions and throw adjudication.
 
@@ -62,7 +66,11 @@ Full effects is the default. Soft lowers background resolution and cadence, omit
 
 `effect-flow.js` consumes only an explicit list of public events and the shared dealt count. It never reads bidding eligibility, private draws, hidden burial cards, model work or usage records. It suppresses historical effects after loading, switching viewers, redealing, hiding or pausing; rapid updates coalesce. The effect layer contains at most 80 decorative elements and clears on pause, visibility changes and navigation.
 
-Sound remains off by default and requires a user gesture when enabled. Local synthesis supplies paper rustles, wooden play taps, declaration notes, capture chimes and short win/finish phrases. Sounds follow the same public-event boundary. No music or audio files are downloaded.
+Music and sound remain opt-in and require a user gesture. Local synthesis supplies fuller paper rustles, wooden landings, declaration notes, collection sounds and short result phrases. The fourth play in a trick retains its landing accent. Effects default to 50% on fresh preferences; explicit saved volumes are retained. A compressor controls dense effects, and audible effects briefly duck the music through a separate gain bus, then restore it smoothly without restarting the track. The approved After Eighty file is unchanged and is downloaded/decoded once when music is enabled. All sound cues follow the public-event boundary.
+
+## Dealing presentation
+
+At the default 250ms draw interval, independent 320ms flights may overlap. A flight captures its origin and destination in screen coordinates when a new public draw arrives; later declarations and repaints never retarget it. At most four decorative flights exist, with no backlog after reconnect, pause or hiding. Resizing cancels old geometry. The deck reserves room for declared cards before any declaration, while the bid row keeps its height when options disappear. Hand reflow animates a visual wrapper independently of fixed hit slots and hover lifts. Reduced motion skips these animations without changing the deal clock or private bidding behavior.
 
 ## Learning, records and privacy
 

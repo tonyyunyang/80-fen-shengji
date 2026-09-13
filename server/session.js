@@ -3,7 +3,7 @@ import { createGame, applyAction, observation, publicView, nextDeal, safeAction,
 import { choosePeilian } from '../src/peilian.js';
 import { requestAction, providerStatus, PROVIDERS } from '../src/providers.js';
 import { DEFAULT_RULES, classify, enumerateLegalFollows } from '../src/rules.js';
-import { decisionTimeoutMs, DEAL_INTERVAL_MS, boundedInteger, CLOSING_WINDOW_MS } from '../src/player-settings.js';
+import { decisionTimeoutMs, dealIntervalMs, DEAL_INTERVAL_MS, boundedInteger, CLOSING_WINDOW_MS } from '../src/player-settings.js';
 import { apiDecision } from './api-decision.js';
 import { Bidding } from './bidding.js';
 import { assertTokenPlanModel, DEFAULT_TOKEN_PLAN_MODEL } from '../src/model-catalog.js';
@@ -42,7 +42,7 @@ export function validateConfig(input = {}, status = providerStatus()) {
     maxOutput: boundedInteger(input.limits?.maxOutput, 512, 128, 4096),
   };
   return { seats, rules, limits, dealing: input.dealing === 'ordered' || seats.filter(seat => seat.kind === 'human').length > 1 ? 'ordered' : 'continuous',
-    dealIntervalMs: Number(input.dealIntervalMs) === 700 ? 700 : DEAL_INTERVAL_MS, speed: boundedInteger(input.speed, 600, 50, 2000) };
+    dealIntervalMs: dealIntervalMs(input.dealIntervalMs), speed: boundedInteger(input.speed, 600, 50, 2000) };
 }
 export class Session {
   constructor({ env = process.env, connections = null, providerCall = requestAction, persist = () => {}, audit = () => {} } = {}) {
@@ -93,7 +93,7 @@ export class Session {
       timeoutMs: decisionTimeoutMs(data.config.limits?.timeoutMs), maxOutput: boundedInteger(data.config.limits?.maxOutput, 512, 128, 4096),
     } };
     const clock = data.dealClock ? { ...data.dealClock,
-      drawRemaining: data.dealClock.drawRemaining == null ? null : boundedInteger(data.dealClock.drawRemaining, 500, 0, 700),
+      drawRemaining: data.dealClock.drawRemaining == null ? null : boundedInteger(data.dealClock.drawRemaining, config.dealIntervalMs || DEAL_INTERVAL_MS, 0, 700),
       closingRemaining: data.dealClock.closingRemaining == null ? null : boundedInteger(data.dealClock.closingRemaining, 5000, 0, CLOSING_WINDOW_MS),
     } : null;
     if (clock && (!Array.isArray(clock.completed) || clock.completed.length !== 4 || clock.completed.some(key => key !== null && typeof key !== 'string'))) throw new Error('存档时钟无效');
