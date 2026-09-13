@@ -61,7 +61,7 @@ test('v8 requests ignore actual hidden hands, the unknown kitty, shuffle seeds a
   [hidden.hands[others[0]][0],hidden.kitty[0]]=[hidden.kitty[0],hidden.hands[others[0]][0]];
   const changed=observation(hidden,actor);changed.seed=555;changed.hands=hidden.hands;changed.unknownKitty=hidden.kitty;changed.quiz={secretAnswer:'do not send'};
   assert.deepEqual(buildRequest(changed,seat,options),expected);
-  for(const contextProfile of ['expert-zh','expert-en','expert-facts-zh','expert-facts-en','expert-search-zh','expert-search-en','expert-search-wide-zh','search','partnership-plan','partnership-plan-search'])assert.deepEqual(buildRequest(changed,seat,{...options,contextProfile}),buildRequest(view,seat,{...options,contextProfile}));
+  for(const contextProfile of ['expert-cooperate-zh','expert-cooperate-en','expert-cooperate-search-zh','expert-cooperate-search-en','expert-zh','expert-en','expert-facts-zh','expert-facts-en','expert-search-zh','expert-search-en','expert-search-wide-zh','search','partnership-plan','partnership-plan-search'])assert.deepEqual(buildRequest(changed,seat,{...options,contextProfile}),buildRequest(view,seat,{...options,contextProfile}));
   const compact=compactObservation(view,followMoves(view),'partnership');
   assert.equal(compact.v,8);assert.equal(compact.partnership.partner,(actor+2)%4);
   assert.equal(compact.referenceAdvice,undefined);assert.equal(compact.endgameEstimates,undefined);

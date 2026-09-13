@@ -67,7 +67,10 @@ export async function apiDecision(session, view, decision, {
         session.save(false);
       };
       try {
-        const result = await awaitProvider(session.providerCall(view, seat, { ...connection, contextProfile: (seat.endgameAnalysis === false ? 'expert-facts-' : 'expert-search-') + (seat.promptLanguage === 'en' ? 'en' : 'zh'), maxOutput: session.config.limits.maxOutput, signal: controller.signal, feedback: lastError, decisionId: decision.id }), controller.signal,
+        const cardPlay = ['lead', 'follow'].includes(view.phase);
+        const profile = cardPlay ? (seat.endgameAnalysis === false ? 'expert-cooperate-' : 'expert-cooperate-search-') :
+          (seat.endgameAnalysis === false ? 'expert-facts-' : 'expert-search-');
+        const result = await awaitProvider(session.providerCall(view, seat, { ...connection, contextProfile: profile + (seat.promptLanguage === 'en' ? 'en' : 'zh'), maxOutput: session.config.limits.maxOutput, signal: controller.signal, feedback: lastError, decisionId: decision.id }), controller.signal,
           (error, result) => { late = { error, result }; reconcile(); });
         usageReceived = true; metering = result.metering || null; replyUsage = result.usage;
         account(result.usage, result.usageKnown !== false, result.ms, metering, result.simulated);

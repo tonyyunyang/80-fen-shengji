@@ -104,6 +104,10 @@ try{
   assert.equal(hosted.stats.errors,0);assert.equal(hosted.stats.fallbacks,0);
   assert.ok(hosted.config.seats.every(seat=>seat.endgameAnalysis===false));
   assert.equal((await post('/api/pause',b.cookie,b.data.csrf,{paused:true})).status,200);
+  const cooperationResponse=await post('/api/fixture-cooperation',b.cookie,b.data.csrf,{});assert.equal(cooperationResponse.status,200);
+  const cooperation=await cooperationResponse.json();noKeys(cooperation);
+  assert.equal(cooperation.fallbacks,0);assert.ok(cooperation.requests.some(r=>r.phase==='lead'));assert.ok(cooperation.requests.some(r=>r.phase==='follow'));
+  assert.ok(cooperation.requests.every(r=>r.outcome==='valid'&&r.contextVersion===19&&r.analysisStatus===null),'hosted card play uses cooperation facts without Node analysis');
   noKeys(await (await get('/api/audit',b.cookie)).json());
   const personalSeat={kind:'api',provider:'qwen',connectionId:personalId,model:'fixture-text',name:'Personal fixture'};
   assert.equal((await post('/api/connections/save',a.cookie,a.data.csrf,{...personal,id:personalId})).status,200);

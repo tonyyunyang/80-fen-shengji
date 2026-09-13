@@ -66,7 +66,7 @@ test('live API seats use their chosen prompt language and ignore legacy advice f
   const seats=state.seats.map((seat,index)=>({...seat,kind:'api',provider:'qwen',model:'fixture',referenceAdvice:true,promptLanguage:index%2===0?'zh':'en',endgameAnalysis:index%2===0}));
   const session=new Session({env:{QWEN_API_KEY:'fixture-only',QWEN_BASE_URL:'https://example.invalid/v1'},providerCall:async(view,seat,options)=>{
     seen.add(view.seat);
-    assert.equal(options.contextProfile,view.seat%2===0?'expert-search-zh':'expert-facts-en');
+    assert.equal(options.contextProfile,view.seat%2===0?'expert-cooperate-search-zh':'expert-cooperate-en');
     assert.equal(seat.referenceAdvice,undefined);
     return {action:choosePeilian(view,options.decisionId),usage:{input:0,output:0,cached:0,cacheWrite:0},ms:0,simulated:true};
   }});
