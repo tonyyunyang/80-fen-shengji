@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Enable music and all table sounds by default, starting after the first interaction; retain saved mute choices and independent volume controls.
 - Make Qwen 3.8 Flash the default hosted model; Max remains selectable.
 - Retain accepted declarations and overcalls as explicit AI reading evidence, and show single/pair strength plus exposed cards in table history.
 - Add publicly grounded point-cashing windows, separate uncertain counter references from proven winners, and preserve risk reminders for voids, zero-point tricks and the 80-point threshold.

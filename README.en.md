@@ -77,7 +77,7 @@ Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)**, choose **New game**, ar
 
 The default is you and three local practice bots. Setup lists **You, Teammate, Left opponent and Right opponent**, with their table positions, so each assignment is easy to locate. Appearance preferences live in **Settings**; seats and table rules live in **New game**. The menu supports Chinese and English.
 
-For a quieter table, set **Light & effects** to **Soft** or **Off**, or turn off **Animation**. System reduced motion is respected. Sound is off by default and has its own volume control.
+For a quieter table, set **Light & effects** to **Soft** or **Off**, or turn off **Animation**. System reduced motion is respected. Music and table sounds are enabled by default and start after your first click or tap. Each has its own volume and mute control; saved mute choices are retained.
 
 Desktop and phone browsers are supported. This is a **single-device table**; cross-device rooms are not available. Separate browser sessions own separate tables. The `127.0.0.1` address above runs locally; the public game is at [eighty.tonytheyang.com](https://eighty.tonytheyang.com/). To host your own instance, read the [deployment guide](docs/security-and-deployment.md).
 
