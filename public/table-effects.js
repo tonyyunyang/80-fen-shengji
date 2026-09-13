@@ -102,7 +102,9 @@ export function createTableEffects({ preferences, sound, reducedMotion }) {
     board = document.getElementById('cardTable'); layer = document.getElementById('tableEffects');
     if (!active || !board) return;
     // One sonic accent per state batch. The sound system is separately opt-in.
-    const priority = ['result','collect','capture','declaration','trump_set','play','deal'];
+    // The fourth play still needs its landing sound; collection has its own
+    // later cue. A simultaneous capture must not swallow that last card's tap.
+    const priority = ['result','collect','declaration','trump_set','play','capture','deal'];
     const audible = priority.map(type => cues.find(cue => cue.type === type)).find(Boolean);
     // With reduced motion there is no collection animation to wait for.
     // In animated play, score notes arrive only when the pile reaches its seat.

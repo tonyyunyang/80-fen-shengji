@@ -1975,6 +1975,13 @@ dialog {
   width: 62px;
   height: 93px;
 }
+.deal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  overflow: hidden;
+}
 .deal-flight {
   position: absolute;
   left: 50%;
@@ -1983,20 +1990,10 @@ dialog {
   height: 66px;
   z-index: 23;
   pointer-events: none;
-  animation: deal-flight 0.38s ease-out both;
+  will-change: transform, opacity;
 }
 .hand-slot[data-arriving='true'] .face {
-  animation: card-arrive 0.35s ease-out both;
-}
-@keyframes deal-flight {
-  from {
-    transform: translate(-50%, 0) rotate(-5deg);
-    opacity: 1;
-  }
-  to {
-    transform: translate(calc(var(--fly-x) - 50%), var(--fly-y)) scale(0.5) rotate(7deg);
-    opacity: 0;
-  }
+  animation: card-arrive 0.25s 0.07s ease-out both;
 }
 @keyframes card-arrive {
   from {

@@ -1,5 +1,6 @@
 export const MAX_DECISION_MS = 12000;
-export const DEAL_INTERVAL_MS = 500;
+export const DEAL_INTERVAL_MS = 250;
+export const dealIntervalMs = value => [250, 500, 700].includes(Number(value)) ? Number(value) : DEAL_INTERVAL_MS;
 export const CLOSING_WINDOW_MS = 5000;
 export const BID_REVIEW_INTERVAL_MS = 2000;
 export function boundedInteger(value, fallback, minimum, maximum) {

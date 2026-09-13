@@ -6,7 +6,7 @@ import { t, pick, locale, rankLabel, cardLabel, cardCount, seatName, localizeSta
 import { SYMBOLS, points } from '/src/cards.js';
 import { classify, safeFollow } from '/src/rules.js';
 import { trainingQuestion } from '/src/training.js';
-import { decisionTimeoutMs, MAX_DECISION_MS } from '/src/player-settings.js';
+import { decisionTimeoutMs, MAX_DECISION_MS, DEAL_INTERVAL_MS } from '/src/player-settings.js';
 import { DEFAULT_PREFERENCES, readPreferences } from './preferences.js';
 import { createTableSound } from './table-sound.js';
 import { createTableMusic } from './table-music.js';
@@ -22,7 +22,8 @@ import { wordmark } from './wordmark.js';
 import { enhanceDialogs } from './dialogs.js';
 import { createHandDrag } from './hand-drag.js';
 import { handLayout } from './hand-layout.js';
-import { tableLayout, fanOverlap, hasLiveDealFlight, initialSceneScale, fitScene } from './table-layout.js';
+import { tableLayout, fanOverlap, initialSceneScale, fitScene } from './table-layout.js';
+import { createDealMotion } from './deal-motion.js';
 import { selectionError, selectRange, selectPair, dragCardIds } from './hand-tools.js';
 import { apiSeatFields, connectionFor, setupConnectionsDialog } from './connections-ui.js';
 import { TrickFlow } from './table-flow.js';
@@ -36,7 +37,6 @@ import {
   resultMarkup,
   seatLabel,
   levelLabel,
-  relativePosition,
   playerName,
   arrivingCard,
   declarationMarkup,
@@ -89,6 +89,7 @@ function musicStatus(state) {
 }
 const music = createTableMusic(() => appearance, { getContext: sound.getContext, onStatus: musicStatus });
 sound.onUnlock(() => music.sync());
+sound.onPlay(kind => music.duck(kind));
 try {
   const stored = JSON.parse(localStorage.getItem('eighty-config'));
   if (
@@ -99,6 +100,13 @@ try {
   const options = JSON.parse(localStorage.getItem('eighty-pixel-options'));
   appearance = readPreferences(options);
 } catch {}
+// The old default was 500 ms. Migrate that default once, without resetting
+// seats, personal connections, or an explicit slow setting. Future 500 ms
+// selections carry the version marker and stay selected.
+if (config.dealPaceVersion !== 1) {
+  if (config.dealIntervalMs == null || Number(config.dealIntervalMs) === 500) config.dealIntervalMs = DEAL_INTERVAL_MS;
+  config.dealPaceVersion = 1;
+}
 for (const seat of config.seats) {
   delete seat.referenceAdvice;
   if (seat.kind === 'api') seat.promptLanguage = seat.promptLanguage === 'en' ? 'en' : 'zh';
@@ -150,6 +158,7 @@ const clientId = crypto.randomUUID(),
   trickFlow = new TrickFlow(),
   motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const atmosphere = createAtmosphere($('atmosphere'));
+const dealMotion = createDealMotion({back:cardBack});
 const tableEffects = createTableEffects({
   preferences: () => appearance,
   sound,
@@ -258,8 +267,9 @@ function renderSetup() {
     option('scramble', t('重发并重新抢庄'), config.rules.fullRebel) +
     '</select></label>' +
     t('<label class="option-row">发牌节奏<select id="dealSpeed">') +
-    option('500', t('从容 · 每人每 2 秒一张'), String(config.dealIntervalMs || 500)) +
-    option('700', t('慢速 · 每人每 2.8 秒一张'), String(config.dealIntervalMs || 500)) +
+    option('250', pick('快速 · 每人每 1 秒一张', 'Quick · one card per player each second'), String(config.dealIntervalMs || DEAL_INTERVAL_MS)) +
+    option('500', t('从容 · 每人每 2 秒一张'), String(config.dealIntervalMs || DEAL_INTERVAL_MS)) +
+    option('700', t('慢速 · 每人每 2.8 秒一张'), String(config.dealIntervalMs || DEAL_INTERVAL_MS)) +
     '</select></label>' +
     t('<label class="option-row">机器出牌节奏<select id="speed">') +
     option('600', t('从容 · 600ms'), String(config.speed)) +
@@ -705,7 +715,7 @@ function canPlay() {
 function handCard(card, enabled, game) {
   const trump = game.trump && (card.suit === 'X' || card.rank === game.trump.rank || card.suit === game.trump.suit);
   const tab = card.id === focusCard || (!game.hand.some((c) => c.id === focusCard) && card.id === game.hand[0]?.id);
-  return `<button class="hand-slot" data-live-style data-trump="${!!trump}" data-recalled="${Date.now() - (recalled.get(card.id) || 0) < 450}" data-arriving="${arriving?.id === card.id && Date.now() - arriving.at < 350}" data-card="${card.id}" tabindex="${tab ? '0' : '-1'}" aria-label="${escape(cardLabel(card)) + pick(' 第' + (card.id >= 54 ? '二' : '一') + '张', ' · copy ' + (card.id >= 54 ? 2 : 1)) + (trump ? pick('，主牌', ', trump') : '')}" aria-pressed="${selected.has(card.id)}"${enabled ? '' : ' disabled'}><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></button>`;
+  return `<button class="hand-slot" data-live-style data-trump="${!!trump}" data-recalled="${Date.now() - (recalled.get(card.id) || 0) < 450}" data-arriving="${arriving?.id === card.id && Date.now() - arriving.at < 350}" data-card="${card.id}" tabindex="${tab ? '0' : '-1'}" aria-label="${escape(cardLabel(card)) + pick(' 第' + (card.id >= 54 ? '二' : '一') + '张', ' · copy ' + (card.id >= 54 ? 2 : 1)) + (trump ? pick('，主牌', ', trump') : '')}" aria-pressed="${selected.has(card.id)}"${enabled ? '' : ' disabled'}><span class="reflow" data-preserve><span class="lift" data-preserve><span class="face" data-suit="${card.suit}" aria-hidden="true">${cardFace(card)}</span></span></span></button>`;
 }
 function handPanel(game) {
   const touch = innerWidth < 760 || matchMedia('(pointer: coarse)').matches;
@@ -807,7 +817,7 @@ function handPanel(game) {
   return (
     draft +
     `<div class="drop-target" id="dropTarget" data-live-style aria-hidden="true">${pick('拖到这里出牌', 'Drop here to play')}</div>` +
-    `<div class="hand-panel" id="handPanel"><div class="hand" id="playerHand" data-live-style role="group" aria-label="${pick('你的手牌', 'Your hand')}"><div class="hand-content" id="handContent" data-live-style>${visibleHand.length ? visibleHand.map((card) => handCard(card, playing, game)).join('') : `<div class="empty-hand">${viewer < 0 ? pick('公开观战视角', 'Public spectator view') : game.score ? '' : pick('手牌将在发牌时到来', 'Your cards arrive as the deal begins')}</div>`}</div></div><div class="hand-footer"><span class="hand-info${game.dealer === viewer ? ' is-dealer' : ''}">${game.dealer === viewer ? `<b class="dealer-inline" aria-label="${pick('庄家', 'Dealer')}">${pick('庄', 'D')}</b>` : ''}${viewer < 0 ? pick('观战', 'Watching') : pick('手牌 ', 'Hand · ') + cardCount(game.hand.length)}<small>${viewer < 0 ? '' : pick('你 · ', 'You · ') + directions[viewer] + (game.dealer === viewer ? pick(' · 庄家', ' · dealer') : '')}</small></span>${status}<div class="hand-actions">${actions}</div>${bids ? `<div class="bidding-footer"><div class="bid-options">${bids}</div></div>` : ''}</div></div>`
+    `<div class="hand-panel" id="handPanel"><div class="hand" id="playerHand" data-live-style role="group" aria-label="${pick('你的手牌', 'Your hand')}"><div class="hand-content" id="handContent" data-live-style>${visibleHand.length ? visibleHand.map((card) => handCard(card, playing, game)).join('') : `<div class="empty-hand">${viewer < 0 ? pick('公开观战视角', 'Public spectator view') : game.score ? '' : pick('手牌将在发牌时到来', 'Your cards arrive as the deal begins')}</div>`}</div></div><div class="hand-footer"><span class="hand-info${game.dealer === viewer ? ' is-dealer' : ''}">${game.dealer === viewer ? `<b class="dealer-inline" aria-label="${pick('庄家', 'Dealer')}">${pick('庄', 'D')}</b>` : ''}${viewer < 0 ? pick('观战', 'Watching') : pick('手牌 ', 'Hand · ') + cardCount(game.hand.length)}<small>${viewer < 0 ? '' : pick('你 · ', 'You · ') + directions[viewer] + (game.dealer === viewer ? pick(' · 庄家', ' · dealer') : '')}</small></span>${status}<div class="hand-actions">${actions}</div>${bids || bidding ? `<div class="bidding-footer"><div class="bid-options">${bids}</div></div>` : ''}</div></div>`
   );
 }
 function bidButton(item, game) {
@@ -952,8 +962,10 @@ function layoutTable(sceneHeight) {
     burial = board.querySelector('.burial-guide');
   for (const node of [center, burial])
     if (node) {
-      const northDeclared = board.querySelector('.declaration-pile.north')?.offsetHeight || 0,
-        southDeclared = board.querySelector('.declaration-pile.south')?.offsetHeight || 0;
+      const reserving = node === center && ['dealing','closing'].includes(latest.game.phase);
+      const reserve = mobile ? compact ? 0 : 96 : 170;
+      const northDeclared = reserving ? reserve : board.querySelector('.declaration-pile.north')?.offsetHeight || 0,
+        southDeclared = reserving ? reserve : board.querySelector('.declaration-pile.south')?.offsetHeight || 0;
       const top = layout.northTop + northDeclared,
         bottom = layout.handTop - southDeclared - gap;
       node.style.top = Math.max(top, (top + bottom - node.offsetHeight) / 2) + 'px';
@@ -961,9 +973,12 @@ function layoutTable(sceneHeight) {
     }
   const drop = $('dropTarget');
   if (drop) {
-    drop.style.top = Math.max(layout.northTop, layout.handTop - 160 - gap) + 'px';
+    const header=board.querySelector('.game-top');
+    const top=header.offsetTop+header.offsetHeight+12;
+    drop.style.left='12px';drop.style.right='12px';
+    drop.style.top = top + 'px';
     drop.style.bottom = 'auto';
-    drop.style.height = Math.min(160, layout.handTop - layout.northTop - gap) + 'px';
+    drop.style.height = Math.max(0,layout.handTop+8-top) + 'px';
   }
   for (const node of board.querySelectorAll('.declaration-pile.south')) {
     node.style.top = layout.handTop - node.offsetHeight - gap + 'px';
@@ -971,25 +986,6 @@ function layoutTable(sceneHeight) {
   }
   const boardRect = board.getBoundingClientRect(),
     scale = Number(board.dataset.sceneScale) || 1;
-  const flying = board.querySelector('.deal-flight'),
-    stack = center?.querySelector('.deck-stack');
-  if (flying && stack && !latest.paused && hasLiveDealFlight(latest?.game, latest?.dealClock, Date.now())) {
-    const game = latest.game,
-      position = relativePosition(game, game.drawSeat);
-    const target =
-      position === 'south' && $('playerHand')?.clientWidth
-        ? $('playerHand')
-        : board.querySelector('.seat.' + position + ' .backs');
-    if (target) {
-      const from = stack.getBoundingClientRect(),
-        to = target.getBoundingClientRect();
-      flying.style.left = (from.left + from.width / 2 - boardRect.left) / scale + 'px';
-      flying.style.top = (from.top + from.height / 2 - boardRect.top) / scale + 'px';
-      flying.style.setProperty('--fly-x', (to.left + to.width / 2 - from.left - from.width / 2) / scale + 'px');
-      flying.style.setProperty('--fly-y', (to.top + to.height / 2 - from.top - from.height / 2) / scale + 'px');
-      flying.style.animationDelay = -Math.max(0, Date.now() - latest.dealClock.lastDrawAt) + 'ms';
-    }
-  }
   for (const node of board.querySelectorAll('.played-slot[data-winner]')) {
     const fan = node.querySelector('.played-fan'),
       target =
@@ -1064,11 +1060,13 @@ function bindHand() {
 }
 function dropFeedback(ids) {
   const game = latest.game;
+  const guide=pick('向桌面拖出 · 放回手牌取消', 'Lift onto the table · return to cancel');
   if (game.pending.phase === 'bury' || !appearance.dragToPlay) {
     const valid = game.pending.phase !== 'bury' || new Set([...selected, ...ids]).size <= 8;
     return {
       valid,
       selectOnly: true,
+      guide,
       label: !valid
         ? pick('只需要 8 张底牌，请先收回一张。', 'Only eight kitty cards are needed. Unselect one first.')
         : game.pending.phase === 'bury'
@@ -1080,6 +1078,7 @@ function dropFeedback(ids) {
     selectionError(game, ids) || (tableMotion ? pick('收牌后再出牌。', 'Wait for the trick to be collected.') : null);
   return {
     valid: !error,
+    guide,
     label: error
       ? pick('放回手牌 · ', 'Return to hand · ') + error
       : pick('松开打出 ', 'Release to play ') + cardCount(ids.length),
@@ -1137,6 +1136,8 @@ function render() {
   applyAppearance();
   document.body.dataset.screen = viewMode;
   const game = latest?.game;
+  const dealingActive = viewMode === 'game' && !latest?.paused && !document.hidden && appearance.motion && !motionPreference.matches && !document.querySelector('dialog[open]');
+  const beforeHand = dealMotion.capture(game,dealingActive);
   clearTimeout(motionTimer);
   tableMotion = trickFlow.update(game, {
     now: performance.now(),
@@ -1152,22 +1153,15 @@ function render() {
     handDrag?.cancel();
   }
   if (!game || viewMode !== 'game') {
+    dealMotion.update(game,{active:false});
     tableEffects.update(game, { active: false, motion: null });
     return;
   }
   const boardClass = game.viewer < 0 ? ' spectator' : '';
   const header = `<div class="game-top"><div><button class="pixel-button" id="pauseGame">☰ ${pick('菜单', 'Menu')}</button><span class="match-tag">${pick('第 ', 'Deal ')}${game.score ? game.match.round : game.match.round + 1}${pick(' 局', '')} · ${pick('南北', 'S/N')} ${levelLabel(game.match.levels[0])} / ${pick('东西', 'E/W')} ${levelLabel(game.match.levels[1])}</span></div><div class="game-tools"><button class="quiet" id="bookButton">▤ ${pick('记牌簿', 'Notebook')}</button><button class="quiet" id="lessonButton" aria-pressed="${appearance.learning}">${appearance.learning ? '✦' : '◇'} ${pick('边玩边学', 'Learn')}</button></div></div>`;
-  const flight =
-    appearance.motion &&
-    !motionPreference.matches &&
-    !document.hidden &&
-    !latest.paused &&
-    hasLiveDealFlight(game, latest.dealClock, Date.now())
-      ? `<span class="deal-flight" data-key="draw-${game.dealt}" aria-hidden="true">${cardBack()}</span>`
-      : '';
   patchHtml(
     $('gameArea'),
-    `<div class="pixel-game${boardClass}" id="cardTable" data-live-style data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><div class="table-emblem" aria-hidden="true"><span>八 十 分</span><b>80</b><small>好牌 · 好搭档</small></div><div class="effects-layer" id="tableEffects" data-preserve aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat, index) => pixelSeat(game, index, typeName(seat), latest, tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${flight}${trickMarkup(game, tableMotion)}${!tableMotion ? resultMarkup(game) : ''}${handPanel(game)}</div>`,
+    `<div class="pixel-game${boardClass}" id="cardTable" data-live-style data-phase="${game.phase}"><div class="felt" aria-hidden="true"></div><div class="table-emblem" aria-hidden="true"><span>八 十 分</span><b>80</b><small>好牌 · 好搭档</small></div><div class="effects-layer" id="tableEffects" data-preserve aria-hidden="true"></div><span id="tableCardSize" class="table-card-size" aria-hidden="true"></span><span id="tableCaptionSize" class="play-caption table-caption-size" aria-hidden="true"></span>${header}${dealMarkers(game)}${game.seats.map((seat, index) => pixelSeat(game, index, typeName(seat), latest, tableMotion)).join('')}${deckMarkup(game)}${declarationMarkup(game)}${trickMarkup(game, tableMotion)}${!tableMotion ? resultMarkup(game) : ''}${handPanel(game)}</div>`,
   );
 
   const ownTurn = {
@@ -1235,6 +1229,7 @@ function render() {
     .querySelectorAll('[data-review-trick]')
     .forEach((button) => (button.onclick = () => reviewTrick(Number(button.dataset.reviewTrick))));
   bindHand();
+  dealMotion.update(game,{active:dealingActive,before:beforeHand});
   updateClock();
   renderBook();
   renderTraining(game);
@@ -1672,7 +1667,7 @@ $('soundPreview').onclick = () => sound.preview();
 $('audioToggle').onclick = () => {
   const enabled = appearance.sound && appearance.volume > 0 || appearance.music && appearance.musicVolume > 0;
   appearance.sound = appearance.music = !enabled;
-  if (!enabled) { appearance.volume ||= 35; appearance.musicVolume ||= 30; }
+  if (!enabled) { appearance.volume ||= DEFAULT_PREFERENCES.volume; appearance.musicVolume ||= DEFAULT_PREFERENCES.musicVolume; }
   applyAppearance(true); sound.unlock().then(() => music.sync({ retry: true }));
 };
 $('effectQuality').onchange = (event) => {
@@ -1793,6 +1788,7 @@ let resizeFrame;
 function resizeTable() {
   // Cancellation must happen before another pointer-up can submit the group.
   handDrag?.cancel(true);
+  dealMotion.clear();
   cancelAnimationFrame(resizeFrame);
   resizeFrame = requestAnimationFrame(render);
 }

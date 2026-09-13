@@ -65,3 +65,7 @@ ffmpeg -ss 0.4 -t 12 -i output/gameplay.webm \
 ```
 
 Keep each published asset below 6 MiB; `npm run check` checks this limit and local documentation links. Keep raw recordings, browser profiles and capture scripts under ignored `output/`, not in the release.
+
+## Upward release gesture · September 13, 2026
+
+`upward-release.png` shows the real client during a held-card gesture in a synthetic local deal. The wider felt area and the hint beneath the packet replace the former central target box. Capture used the fixture Worker and no real provider requests. Raw captures and validation remain in ignored `output/playwright/`.

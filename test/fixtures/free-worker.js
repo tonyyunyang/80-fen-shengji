@@ -3,7 +3,7 @@ import { SponsoredAI } from '../../cloudflare/sponsored-object.js';
 import { sponsoredRequest } from '../../cloudflare/sponsor-core.js';
 import { GameTable as AuthoritativeTable } from '../../cloudflare/game-table.js';
 import {publicProviderFetch,publicAnswers} from '../../cloudflare/public-provider-fetch.js';
-import {createGame,applyAction,safeAction,observation} from '../../src/game.js';
+import {createGame,drawCard,applyBid,applyAction,safeAction,observation} from '../../src/game.js';
 import {decodedReplay} from '../../cloudflare/result-record.js';
 import {replayTimeline} from '../../cloudflare/completed-replay.js';
 
@@ -20,6 +20,20 @@ export class GameTable extends AuthoritativeTable {
     return Response.json({id:key,choices:[{message:{tool_calls:[{type:'function',function:{name:fn?.name||'declare_trump',arguments:'{"choice":"pass"}'}}]}}],usage:{prompt_tokens:10,completion_tokens:4}});
   }});}
   async fetch(request){
+    if(new URL(request.url).pathname==='/api/fixture-dealing'){
+      await this.ready;const input=await request.json();
+      if(input.reset){
+        this.session.start({seats:Array.from({length:4},(_,i)=>({kind:i===0?'human':'peilian'})),dealing:'continuous',rules:{firstDealer:'random'},limits:{maxRequests:0}});
+        this.session.stop();
+        this.session.state=createGame({...this.session.config,id:this.session.state.id,seed:18});
+      }
+      let state=this.session.state;
+      for(let i=0;i<Math.min(100,Math.max(0,input.draws||0))&&state.dealt<100;i++)state=drawCard(state);
+      if(input.bid){const seat=input.bid==='north-single'?2:0,choice=seat===2?'C1':'S2';state=applyBid(state,{gameId:state.id,epoch:state.attempts,seat,handCount:state.hands[seat].length,choice});}
+      this.session.state=state;this.session.paused=false;this.session.bidding.ensure();
+      if(input.draws)this.session.bidding.lastDrawAt=Date.now();
+      this.session.save();return Response.json({dealt:state.dealt});
+    }
     if(new URL(request.url).pathname==='/api/fixture-hand'){
       await this.ready;
       this.session.start({seats:Array.from({length:4},(_,i)=>({kind:i===0?'human':'peilian'})),dealing:'ordered',rules:{firstDealer:'random'},speed:50});

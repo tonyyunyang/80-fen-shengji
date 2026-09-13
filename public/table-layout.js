@@ -33,13 +33,6 @@ export function fanOverlap(cardWidth, count, maxWidth, preferred = .25) {
   return Math.max(cardWidth * preferred, (count * cardWidth - maxWidth) / (count - 1));
 }
 
-export function hasLiveDealFlight(game, clock, now) {
-  if (game?.dealing !== 'continuous' || !['dealing','closing'].includes(game.phase) ||
-      !Number.isInteger(game.drawSeat) || game.drawSeat < 0 || game.drawSeat > 3 || !Number.isFinite(clock?.lastDrawAt)) return false;
-  const age = now - clock.lastDrawAt;
-  return age >= 0 && age < 380;
-}
-
 export function initialSceneScale(width, height, minimumWidth = 1280) {
   return Math.max(.05, Math.min(1.5, width / minimumWidth, height / 900));
 }

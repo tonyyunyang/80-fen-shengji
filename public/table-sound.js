@@ -1,13 +1,19 @@
 // Original, locally synthesized paper, wooden taps and short musical accents.
 // The effects are synthesized locally; music shares this gesture-unlocked context.
 export function createTableSound(preferences) {
-  let context, master; const noises = [], unlocked = new Set();
+  let context, master; const noises = [], unlocked = new Set(), listeners = new Set();
   const voices = new Set(), previews = new Set();
   async function unlock() {
     if (!preferences().sound && !preferences().music) return;
     try {
       context ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (!master) { master = context.createGain(); master.connect(context.destination); }
+      if (!master) {
+        master = context.createGain();
+        const compressor=context.createDynamicsCompressor();
+        compressor.threshold.value=-10;compressor.knee.value=12;compressor.ratio.value=4;
+        compressor.attack.value=.003;compressor.release.value=.16;
+        master.connect(compressor);compressor.connect(context.destination);
+      }
       if (context.state !== 'running') await context.resume();
       sync(); for (const listener of unlocked) listener();
     } catch {}
@@ -59,37 +65,42 @@ export function createTableSound(preferences) {
     if (!options.sound || !options.volume || !context || context.state !== 'running' || document.hidden) return;
     // Bounded even if a spectator receives a rapid series of public updates.
     if (voices.size > 18) return;
+    for(const listener of listeners)listener(kind);
     const volume = 1;
-    if (kind === 'deal') { paper(.055 * volume, .033, 3400); return; }
-    if (kind === 'card') { paper(.06 * volume); tone(369.99, 0, .035, .025 * volume); return; }
+    if (kind === 'deal') {
+      paper(.17 * volume, .065, 2600);
+      tone(310, .009, .06, .045 * volume);
+      return;
+    }
+    if (kind === 'card') { paper(.09 * volume); tone(369.99, 0, .045, .035 * volume); return; }
     if (kind === 'play' || kind === 'bury') {
-      paper(.14 * volume, .075, 1800); tone(count > 1 ? 165 : 210, 0, .11, .07 * volume);
+      paper(.30 * volume, .10, 1700); tone(count > 1 ? 165 : 210, .005, .14, .13 * volume);
       if (count > 1 || kind === 'bury') {
         const taps = Math.min(3, Math.max(2, Math.ceil(count / 2)));
-        for (let i = 1; i < taps; i++) { paper(.055, .047, 2100 + i * 130, i * .035); tone(185 + i * 22, i * .035, .075, .025); }
+        for (let i = 1; i < taps; i++) { paper(.09, .055, 2100 + i * 130, i * .035); tone(185 + i * 22, i * .035, .09, .045); }
       }
       return;
     }
     if (kind === 'declaration' || kind === 'trump_set') {
-      [369.99, 493.88, 739.99].forEach((note, i) => tone(note, i * .055, .19, .044 * volume)); return;
+      [369.99, 493.88, 739.99].forEach((note, i) => tone(note, i * .055, .19, .065 * volume)); return;
     }
     if (kind === 'capture') {
-      paper(.07 * volume, .075, 2200);
-      tone(185, 0, .09, .025 * volume);
+      paper(.14 * volume, .095, 2100);
+      tone(185, 0, .10, .05 * volume);
       return;
     }
     if (kind === 'collect') {
-      paper(.09 * volume, .11, 1200);
+      paper(.18 * volume, .13, 1400);
       if (points) {
         const notes = milestone ? [369.99, 493.88, 587.33, 739.99] : points >= 20 ? [493.88, 587.33, 739.99] : [493.88, 587.33];
-        notes.forEach((note, i) => tone(note, .035 + i * .07, milestone ? .25 : .17, milestone ? .048 : .035, 'sine'));
+        notes.forEach((note, i) => tone(note, .035 + i * .07, milestone ? .25 : .17, milestone ? .075 : .055, 'sine'));
       }
       return;
     }
     if (kind === 'win' || kind === 'finish') {
       const notes = kind === 'win' ? [246.94, 369.99, 493.88, 587.33, 739.99] : [369.99, 329.63, 277.18];
-      notes.forEach((note, i) => tone(note, i * .105, .30, .045 * volume));
-      tone(kind === 'win' ? 123.47 : 185, .15, .5, .035 * volume, 'sine');
+      notes.forEach((note, i) => tone(note, i * .105, .30, .07 * volume));
+      tone(kind === 'win' ? 123.47 : 185, .15, .5, .055 * volume, 'sine');
     }
   };
   play.unlock = unlock; play.sync = sync; play.stop = stop;
@@ -102,5 +113,6 @@ export function createTableSound(preferences) {
   };
   play.getContext = () => context;
   play.onUnlock = listener => { unlocked.add(listener); return () => unlocked.delete(listener); };
+  play.onPlay = listener => { listeners.add(listener); return () => listeners.delete(listener); };
   return play;
 }
