@@ -180,8 +180,8 @@ continues to use practice bots for ordinary local review.
 
 | Setting | Initial production value |
 | --- | --- |
-| Default AI | Alibaba Token Plan / `qwen3.8-max` |
-| Other hosted text models | `qwen3.8-flash`, `qwen3.7-plus`, `qwen3.7-max`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-0731`, `glm-5.2` |
+| Default AI | Alibaba Token Plan / `qwen3.8-flash` |
+| Other hosted text models | `qwen3.8-max`, `qwen3.7-plus`, `qwen3.7-max`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash-0731`, `glm-5.2` |
 | Personal connections | Enabled; each visitor may provide their own public HTTPS base URL and key. |
 | Kimi Code | Disabled in the public picker: its endpoint returns HTTP 403 from Cloudflare; the private key binding is retained. |
 | Daily allowance across the site | 2,000 attempted model requests |
