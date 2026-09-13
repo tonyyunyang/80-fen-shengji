@@ -32,9 +32,9 @@ Use **Settings → Light & effects**: Full shows the flowing background, foil an
 
 ### Why is there no sound? / 为什么没有声音？
 
-Music and table sounds are off by default. Enable them from the menu or Settings, then interact with the page to unlock browser audio. The original After Eighty recording loops in the browser; paper, declaration, play, capture and scoring effects are synthesized locally. Music and effects have separate switches and volumes.
+Music and table sounds are enabled by default and start after the first click or tap. Saved mute choices remain in effect; the menu audio button or Reset preferences can enable them again. The original After Eighty recording loops in the browser; paper, declaration, play, capture and scoring effects are synthesized locally. Music and effects have separate switches and volumes.
 
-音乐和音效默认关闭，可在菜单或设置里开启。原创背景音乐《After Eighty》在浏览器中循环播放；发牌、亮主、出牌、收墩和结算音效在本地合成。音乐与音效可分别开关和调节音量。
+音乐和音效默认开启，首次点击或触摸后播放。已保存的静音选择会保留，可用菜单音频按钮或「恢复默认偏好」重新开启。原创背景音乐《After Eighty》在浏览器中循环播放；发牌、亮主、出牌、收墩和结算音效在本地合成。音乐与音效可分别开关和调节音量。
 
 ### Why are there 33 cards? / 为什么拿到 33 张？
 

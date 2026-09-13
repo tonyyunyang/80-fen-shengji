@@ -1,4 +1,5 @@
-/* Run using the Playwright CLI against the isolated local Free preview. */
+/* Run using the Playwright CLI against the isolated local preview on 8235.
+   Replace __ARTIFACTS__ with an absolute ignored output/playwright directory. */
 async page => {
   const errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
@@ -12,11 +13,11 @@ async page => {
   });
   const check=(value,message)=>{if(!value)throw new Error(message);};
   await page.goto('http://127.0.0.1:8235');await page.setViewportSize({width:1440,height:1000});
-  await page.getByRole('button',{name:'♪ 开启声音',exact:true}).waitFor();
-  check(!requests.some(url=>url.endsWith('/after-eighty.mp3')),'music must not load before opt-in');
-  await page.getByRole('button',{name:'♪ 开启声音',exact:true}).click();
-  await page.waitForFunction(()=>document.getElementById('musicStatus').textContent.includes('正在播放'));
+  await page.getByRole('button',{name:'♪ 静音',exact:true}).waitFor();
+  check(!requests.some(url=>url.endsWith('/after-eighty.mp3')),'music must not load before the first gesture');
   await page.getByRole('button',{name:'设置',exact:true}).click();
+  await page.waitForFunction(()=>document.getElementById('musicStatus').textContent.includes('正在播放'));
+  check(await page.getByLabel('背景音乐',{exact:true}).isChecked()&&await page.getByLabel('牌桌音效',{exact:true}).isChecked(),'both audio defaults must be enabled');
   const starts=()=>page.evaluate(()=>window.__audioEvents.filter(e=>e.type==='music'));
   check((await starts()).length===1&&(await starts())[0].loop,'one looping music source');
   await page.getByLabel('音乐音量',{exact:true}).press('ArrowLeft');
@@ -37,11 +38,19 @@ async page => {
   check(requests.filter(url=>url.endsWith('/after-eighty.mp3')).length===1,'the decoded recording is reused');
   await page.getByLabel('背景音乐',{exact:true}).uncheck();await page.getByLabel('牌桌音效',{exact:true}).uncheck();
   check(!requests.some(url=>/\/api\/(start|action)$/.test(url)),'audio settings never call game or AI actions');
-  await page.screenshot({path:'/Users/tonyyunyang/Code/frontend/80-fen-shengji-site/output/playwright/audio-results/settings-wide.png'});
+  await page.screenshot({path:__ARTIFACTS__+'/settings-wide.png'});
   await page.setViewportSize({width:390,height:844});
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'settings must fit a narrow screen');
   check(await page.locator('#settingsView .option-row input, #settingsView .option-row select').evaluateAll(nodes=>nodes.every(node=>{const box=node.getBoundingClientRect();return box.left>=0&&box.right<=innerWidth;})),'every audio and display control must remain visible, not merely clipped by overflow');
-  await page.screenshot({path:'/Users/tonyyunyang/Code/frontend/80-fen-shengji-site/output/playwright/audio-results/settings-narrow.png',fullPage:true});
+  await page.screenshot({path:__ARTIFACTS__+'/settings-narrow.png',fullPage:true});
+  await page.reload();await page.getByRole('button',{name:'♪ 开启声音',exact:true}).waitFor();
+  await page.getByRole('button',{name:'设置',exact:true}).click();
+  check(!await page.getByLabel('背景音乐',{exact:true}).isChecked()&&!await page.getByLabel('牌桌音效',{exact:true}).isChecked(),'saved mutes must survive reload');
+  check((await starts()).length===0,'saved mutes must not start audio on interaction');
+  await page.locator('#resetPreferences').click();
+  await page.waitForFunction(()=>document.getElementById('musicStatus').textContent.includes('正在播放'));
+  check(await page.getByLabel('背景音乐',{exact:true}).isChecked()&&await page.getByLabel('牌桌音效',{exact:true}).isChecked(),'reset must restore both enabled defaults');
+  await page.getByLabel('背景音乐',{exact:true}).uncheck();await page.getByLabel('牌桌音效',{exact:true}).uncheck();
   check(errors.length===0,errors.join('\n'));
-  return {musicLoadedOnce:true,loop:true,resumeOffset:resumed[1].offset,phaseEffects:effects.filter(e=>e.type!=='music').length,consoleErrors:errors.length};
+  return {firstGestureStartsAudio:true,musicLoadedOncePerPage:true,loop:true,resumeOffset:resumed[1].offset,phaseEffects:effects.filter(e=>e.type!=='music').length,savedMuteRetained:true,resetEnablesAudio:true,consoleErrors:errors.length};
 }

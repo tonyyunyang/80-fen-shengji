@@ -1678,6 +1678,7 @@ $('effectQuality').onchange = (event) => {
 $('resetPreferences').onclick = () => {
   appearance = { ...DEFAULT_PREFERENCES };
   applyAppearance(true);
+  sound.unlock().then(() => music.sync({ retry: true }));
 };
 $('trainingToggle').onchange = (event) => {
   appearance.learning = event.target.checked;

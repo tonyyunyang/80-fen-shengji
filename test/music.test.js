@@ -15,7 +15,7 @@ function setup(fetchImpl = async () => ({ok:true,arrayBuffer:async()=>new ArrayB
   const music=createTableMusic(()=>preferences,{getContext:()=>context,document:doc,fetchImpl:(...args)=>{calls++;return fetchImpl(...args);},onStatus:s=>statuses.push(s)});
   return {preferences,doc,context,sources,music,statuses,params,calls:()=>calls};
 }
-test('music stays opt-in and never loads while muted or before audio is unlocked',async()=>{
+test('music never loads while muted or before audio is unlocked',async()=>{
   const f=setup();await f.music.sync();assert.equal(f.calls(),0);
   f.preferences.music=true;f.context.state='suspended';await f.music.sync();assert.equal(f.calls(),0);assert.equal(f.music.state(),'waiting');
   f.context.state='running';f.preferences.musicVolume=0;await f.music.sync();assert.equal(f.calls(),0);
@@ -39,8 +39,12 @@ test('a failed music download is contained and can be retried explicitly',async(
   f.preferences.music=true;await f.music.sync();assert.equal(f.music.state(),'unavailable');await f.music.sync();assert.equal(f.calls(),1);
   broken=false;await f.music.sync({retry:true});assert.equal(f.music.state(),'playing');assert.equal(f.sources.length,1);
 });
-test('old preferences retain their effects choice and gain a separately muted music setting',()=>{
-  assert.deepEqual({music:readPreferences({sound:true,volume:42}).music,musicVolume:readPreferences({}).musicVolume},{music:false,musicVolume:30});
+test('fresh preferences enable audio and full visuals while retaining explicit saved mute and volume choices',()=>{
+  const defaults=readPreferences();
+  assert.deepEqual({sound:defaults.sound,music:defaults.music,motion:defaults.motion,effects:defaults.effects},{sound:true,music:true,motion:true,effects:'full'});
+  assert.deepEqual({music:readPreferences({sound:true,volume:42}).music,musicVolume:defaults.musicVolume},{music:true,musicVolume:30});
+  const muted=readPreferences({sound:false,music:false,volume:0,musicVolume:0});
+  assert.deepEqual({sound:muted.sound,music:muted.music,volume:muted.volume,musicVolume:muted.musicVolume},{sound:false,music:false,volume:0,musicVolume:0});
   assert.equal(readPreferences({musicVolume:Infinity}).musicVolume,30);assert.equal(readPreferences({musicVolume:1000}).musicVolume,100);
 });
 test('sound accents duck only the music bus and return smoothly without restarting the track',async()=>{
