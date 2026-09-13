@@ -29,7 +29,9 @@ These are small development samples, not a league ranking or proof of general st
 
 ## Current experiment
 
-`expert-facts-zh/en` (v16) joins point destinations and structural facts without recommending a practice-bot move. `expert-search-zh/en` (v17) adds up to eight hypothetical allocations from twelve cards remaining. Allocations satisfy public declarations, known burial, card conservation, proven voids and historical following constraints.
+Current lead/follow requests use `expert-cooperate-zh/en` (v19), adding conservative public counter checks and explicit partnership comparisons to the v16 factual rows. `expert-cooperate-search-zh/en` (v20) also retains the optional eight-sample endgame analysis. Bidding, redeal choices and burial retain v16/v17. The Cloudflare deployment uses v19 without Node analysis. See the [September 13 cooperation study](cooperation-2026-09-13.md) for the targeted gains and the limits of the evidence.
+
+The retained `expert-facts-zh/en` (v16) joins point destinations and structural facts without recommending a practice-bot move. `expert-search-zh/en` (v17) adds up to eight hypothetical allocations from twelve cards remaining. Allocations satisfy public declarations, known burial, card conservation, proven voids and historical following constraints.
 
 Every candidate uses the same hypotheses. Simulated continuations use the preserved fast practice rollout on each simulated seat's own observation. Those forecasts are approximate: they are neither actual hidden hands nor calibrated win probabilities. The full legal action space remains available.
 
@@ -46,6 +48,8 @@ npm test
 npm run check
 node scripts/paired-eval.mjs
 ```
+
+`node scripts/cooperation-eval.mjs --live` explicitly opts into the fixed tactical comparison: at most 48 requests, eight minutes, 512 output tokens and twelve seconds per attempt. It writes a private, ignored report under `output/cooperation/`. Its synthetic fixtures include acceptable actions written independently of the recommendation code. Errors stay in the denominator; no practice fallback can improve this score. Repeated development cases measure a regression set, not an independent strength test.
 
 Before a live study, define the model, context versions, seeds, phases, request ceiling and time ceiling. Preserve actual metering when available; unknown usage and prices remain unknown. Results should explain aborted games and fallback, not quietly exclude them.
 
