@@ -1018,8 +1018,8 @@ function bindHand() {
         items: () => [...root.querySelectorAll('.hand-slot')],
         visual: (node) => node.querySelector('.lift'),
         identity: (node) => Number(node.dataset.card),
-        lift: () => $('cardTable')?.dataset.layout === 'desktop' ? 46 : 24,
-        selectedLift: () => $('cardTable')?.dataset.layout === 'desktop' ? 38 : 22,
+        lift: () => $('cardTable')?.dataset.layout === 'desktop' ? 34 : 16,
+        selectedLift: () => $('cardTable')?.dataset.layout === 'desktop' ? 48 : $('cardTable')?.dataset.layout === 'compact' || $('cardTable')?.dataset.density === 'tiny' ? 22 : 30,
         spread: true,
         reducedMotion: () => !appearance.motion,
         clipToRoot: true,
@@ -1334,7 +1334,7 @@ function renderBook() {
                       .join(' / ') || '')
                   : (event.seat !== undefined ? escape(seatName(game.seats[event.seat])) + ' · ' : '') +
                     labels[event.type] +
-                    (event.type === 'declaration' ? ' ' + (event.suit ? SYMBOLS[event.suit] : t('无主')) : '')
+                    (event.type === 'declaration' ? ' · ' + (event.strength >= 2 ? pick('双张', 'Pair') : pick('单张', 'Single')) + ' ' + escape((event.cards || []).map(cardLabel).join(' ')) + (event.suit ? '' : ' · ' + t('无主')) : '')
               }</span>${event.type === 'trick' ? `<span class="points">+${event.points}</span>` : ''}</div>`,
           )
           .join('')

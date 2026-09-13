@@ -6,6 +6,7 @@ const loadAnalysis = () => analysisModule ||= import(new URL('./analysis-worker.
 import { buildExpertFacts, EXPERT_FACTS_PROMPT } from './expert-facts.js';
 import { expertPrompt } from './expert-prompt.js';
 import {buildCooperationContext,COOPERATION_PROMPT,cooperationWinPrompt} from './cooperation-context.js';
+import {buildPartnershipRead,PARTNERSHIP_READ_PROMPT,pointFeedPrompt} from './partnership-read.js';
 import { createHash } from 'node:crypto';
 import { normalizeUsage, referenceCost } from './usage.js';
 import { safeAction } from './game.js';
@@ -28,13 +29,15 @@ const contextVersions = new Map(Object.entries({
   partnership: 8, search: 9, 'partnership-advised': 10, 'decision-first': 11,
   'decision-first-advised': 12, 'partnership-plan': 13, 'partnership-plan-search': 14, 'expert-zh': 15, 'expert-en': 15, 'expert-facts-zh': 16, 'expert-facts-en': 16, 'expert-search-zh': 17, 'expert-search-en': 17, 'expert-search-wide-zh': 18,
   'expert-cooperate-zh':19,'expert-cooperate-en':19,'expert-cooperate-search-zh':20,'expert-cooperate-search-en':20,
+  'expert-read-zh':21,'expert-read-en':21,'expert-read-search-zh':22,'expert-read-search-en':22,
 }));
 export const CONTEXT_PROFILES = Object.freeze([...contextVersions.keys()]);
 export const contextVersion = (profile = 'partnership') => contextVersions.get(profile) ?? 3;
-const cooperationProfile=profile=>profile.startsWith('expert-cooperate-');
-const searchProfile=profile=>profile.startsWith('expert-search-')||profile.startsWith('expert-cooperate-search-');
+const readProfile=profile=>profile.startsWith('expert-read-');
+const cooperationProfile=profile=>profile.startsWith('expert-cooperate-')||readProfile(profile);
+const searchProfile=profile=>profile.startsWith('expert-search-')||profile.startsWith('expert-cooperate-search-')||profile.startsWith('expert-read-search-');
 const factsProfile=profile=>profile.startsWith('expert-facts-')||searchProfile(profile)||cooperationProfile(profile);
-const teamProfiles = ['expert-cooperate-zh','expert-cooperate-en','expert-cooperate-search-zh','expert-cooperate-search-en','expert-search-wide-zh','expert-search-zh','expert-search-en','expert-zh','expert-en','expert-facts-zh','expert-facts-en','partnership','search','partnership-advised','decision-first','decision-first-advised','partnership-plan','partnership-plan-search'];
+const teamProfiles = ['expert-read-zh','expert-read-en','expert-read-search-zh','expert-read-search-en','expert-cooperate-zh','expert-cooperate-en','expert-cooperate-search-zh','expert-cooperate-search-en','expert-search-wide-zh','expert-search-zh','expert-search-en','expert-zh','expert-en','expert-facts-zh','expert-facts-en','partnership','search','partnership-advised','decision-first','decision-first-advised','partnership-plan','partnership-plan-search'];
 const briefProfiles = ['decision-first','decision-first-advised'];
 const actionProfiles = ['strategic-v2','coached',...teamProfiles];
 export function followMoves(view) {
@@ -84,10 +87,11 @@ export function compactObservation(view, moves = followMoves(view), contextProfi
   if(cooperation?.outcomes)result.partnership.certainMoveOutcomes=cooperation.outcomes;
   if (factsProfile(contextProfile)) result.expertFacts = buildExpertFacts(view, moves, result);
   if(cooperation?.rows.length)result.expertFacts.moves=result.expertFacts.moves.map((row,i)=>({...row,...cooperation.rows[i]}));
+  const read=readProfile(contextProfile)?buildPartnershipRead(view,moves,{...result,cooperation:cooperation?.context}):null;
   if (searchProfile(contextProfile)) result.endgameEstimates = endgameOverride === undefined ? buildEndgameEstimates(view, moves, {maxHand:12,samples:contextProfile==='expert-search-wide-zh'?32:8}) : endgameOverride;
   if (['coached','partnership-advised','decision-first-advised','partnership-plan','partnership-plan-search'].includes(contextProfile)) result.referenceAdvice = buildAdvisorContext(view, moves, toolFor(view.phase, moves));
   if (briefProfiles.includes(contextProfile)) return decisionFirstObservation(view, result, moves);
-  if(cooperation)return {v:result.v,cooperation:cooperation.context,...result};
+  if(cooperation)return {v:result.v,...(read?{partnershipRead:read}:{}),cooperation:cooperation.context,...result};
   return result;
 }
 export const SYSTEM_PROMPT = [
@@ -182,6 +186,7 @@ export function buildRequest(view, seat, { env = process.env, maxOutput = 512, f
       '\n残局估计endgameEstimates比较同一组符合公开牌史的可能分牌，绝不是真实隐藏手牌，也不是校准胜率。每个假设后续由只看自身假设手牌的快速本地策略完成。sampledTeamWins为模拟中本方赢局次数，不是复制该策略动作的分数。优先比较各选择的团队胜负及攻方总分，再用当前明确事实审查；你仍可选择任何合法动作。':
       '\nendgameEstimates compares the same hypothetical allocations consistent with public play, never real hidden hands or calibrated win probabilities. Each simulated continuation uses a fast local policy seeing only its own hypothetical observation. sampledTeamWins counts partnership deal wins, not agreement with that policy. Compare team outcomes and attacker totals, then check public tactical facts; all legal actions remain available.';
     if(cooperationProfile(contextProfile))guide+=cooperationWinPrompt(compact.cooperation,language);
+    if(readProfile(contextProfile))guide+='\n'+PARTNERSHIP_READ_PROMPT[language]+pointFeedPrompt(compact.partnershipRead,compact.cooperation,language);
   }
   const prompt=guide?guide+'\nActive rule settings: '+JSON.stringify(view.rules)+activeContract:standardPrompt;
   if (!seat.model?.trim()) throw new Error('请为 API 座位填写模型 ID');

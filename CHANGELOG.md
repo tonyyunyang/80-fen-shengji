@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain accepted declarations and overcalls as explicit AI reading evidence, and show single/pair strength plus exposed cards in table history.
+- Add publicly grounded point-cashing windows, separate uncertain counter references from proven winners, and preserve risk reminders for voids, zero-point tricks and the 80-point threshold.
+- Keep selected cards above the hover wave with smooth state transitions, direct clicks on their exposed strip, and correct responsive targets when a dragged group returns.
+
 - Double the default dealing pace to 250ms per card; retain 500/700ms options and the shared five-second closing window.
 - Freeze each deal flight's trajectory and let adjacent flights overlap, reserve declaration space, and ease hand reflow after public bids.
 - Strengthen paper and card-landing sounds, preserve the final play's accent, and briefly lower music under effects without altering the approved recording.

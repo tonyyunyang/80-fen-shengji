@@ -13,6 +13,22 @@ const allAI=()=>Array.from({length:4},()=>({kind:'api',provider:'mock',model:'fi
 const finished=finish(createGame({id:'archive-fixture',seed:80,seats:allAI()}));
 const identity={ownerId,secret,ip:'93.184.216.34',now:Date.UTC(2026,8,12)};
 
+test('accepted declarations remain in observations and the completed archive after an overcall',()=>{
+  let state=createGame({seed:18,dealing:'continuous',rules:{firstDealer:'random'},seats:allAI()});
+  for(let i=0;i<40;i++)state=drawCard(state);
+  state=applyBid(state,{gameId:state.id,epoch:state.attempts,seat:2,handCount:state.hands[2].length,choice:'C1'});
+  for(let i=0;i<32;i++)state=drawCard(state);
+  state=applyBid(state,{gameId:state.id,epoch:state.attempts,seat:0,handCount:state.hands[0].length,choice:'S2'});
+  const bids=observation(state,1).declarations;
+  assert.deepEqual(bids.map(b=>[b.seat,b.suit,b.strength,b.cards.length]),[[2,'C',1,1],[0,'S',2,2]]);
+  while(state.dealt<100)state=drawCard(state);
+  state=finish(closeBidding(state));
+  const replay=decodedReplay(encodedReplay(completedResult(state,identity).replay_json));
+  assert.deepEqual(replay.events.filter(e=>e.type==='declaration'),bids);
+  assert.equal(replayTimeline(replay).at(-1).score.total,state.score.total);
+  assert.deepEqual(observation(nextDeal(state),1).declarations,[],'a new deal has its own declaration ledger');
+});
+
 test('only a terminal, completely played deal produces a result; AI-only winners are included',()=>{
   const record=completedResult(finished,identity);assert.ok(record);assert.equal(record.is_complete,1);
   assert.equal(record.winning_team,finished.score.attackersWin?1-finished.dealer%2:finished.dealer%2);

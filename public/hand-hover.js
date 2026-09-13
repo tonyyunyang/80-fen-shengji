@@ -24,12 +24,23 @@ export function makeHoverRows(items) {
   return rows;
 }
 
-export function pickHover(rows, x, y, previous = null, { hysteresis = 1.5, lift = 44 } = {}) {
+export function pickHover(rows, x, y, previous = null, { hysteresis = 1.5, lift = 44, selectedLift = 0 } = {}) {
   let rowIndex = -1;
   // A front row owns its entire resting strip. The raised back row cannot
   // capture the front row's cards when the pointer moves vertically.
   for (let i = rows.length - 1; i >= 0; i--) {
     if (y >= rows[i].top && y <= rows[i].bottom + 5) { rowIndex = i; break; }
+  }
+  // Selected cards have a stable exposed strip above their slots. It remains
+  // clickable from outside the hand, without first hovering an unselected card.
+  if(rowIndex<0&&selectedLift>0){
+    for(let i=rows.length-1;i>=0;i--){
+      const row=rows[i];if(y<row.top-selectedLift||y>=row.top)continue;
+      for(let index=row.items.length-1;index>=0;index--){
+        const item=row.items[index];
+        if(item.isSelected&&x>=item.left&&x<=item.left+(item.faceWidth??item.width))return {id:item.id,row:i,index,coordinate:index,x,y};
+      }
+    }
   }
   if (rowIndex < 0 && previous) {
     const i = rows.findIndex(row => row.items.some(item => item.id === previous.id));
@@ -55,6 +66,13 @@ export function pickHover(rows, x, y, previous = null, { hysteresis = 1.5, lift 
 // and equally quick on 60/120/144 Hz displays. No overshoot or CSS restart.
 export function approach(current, target, elapsedMs, timeConstant = 32) {
   return target + (current - target) * Math.exp(-Math.max(0, elapsedMs) / timeConstant);
+}
+
+// Exact critically damped motion. A rapid toggle keeps its current position
+// and velocity, instead of restarting a CSS keyframe or teleporting to a pose.
+export function settleSelection(position,velocity,target,elapsedMs,frequency=30){
+  const dt=Math.max(0,elapsedMs)/1000,offset=position-target,momentum=velocity+frequency*offset,decay=Math.exp(-frequency*dt);
+  return {position:target+(offset+momentum*dt)*decay,velocity:(velocity-frequency*momentum*dt)*decay};
 }
 
 const spreadOffset=(row,index,activeIndex)=>{
@@ -128,6 +146,7 @@ export function createHandHover(root, {
       metrics.layoutReads++;
       return { element, face, id: identity(element), left: rect.left, top: rect.top, width: rect.width, height: rect.height,
         x: old?.x ?? 0, y: old?.y ?? (selected(element) ? -selectionLift() : 0), angle: old?.angle ?? 0,
+        isSelected:old?.isSelected??selected(element),selectionMoving:old?.selectionMoving??false,velocityY:old?.velocityY??0,
         faceWidth: spread && face ? face.offsetWidth * sceneScale : rect.width };
     });
     rows = makeHoverRows(entries);
@@ -140,7 +159,7 @@ export function createHandHover(root, {
     // Picking follows the stable target fan, not a moving DOM rectangle. The
     // newly active card contains the old boundary, so repeated events cannot
     // alternate cards as the fan opens. Clicking a revealed face selects it.
-    return pickHover(spread?spreadHoverRows(rows,active):rows, x, y, active, { lift: (hoverLift() + 12) * sceneScale });
+    return pickHover(spread?spreadHoverRows(rows,active):rows, x, y, active, { lift: (hoverLift() + 12) * sceneScale,selectedLift:selectionLift()*sceneScale });
   }
   function tick(time) {
     frame = 0;
@@ -158,17 +177,21 @@ export function createHandHover(root, {
       // Both neighbours meet at nearly the same height before ownership changes.
       const distance = index >= 0 ? index - active.coordinate : Infinity;
       const weight = allowed && active && index >= 0 ? Math.exp(-distance * distance / .62) : 0;
-      const targetY = -Math.max(selected(entry.element) ? selectionLift() : 0, weight * hoverLift());
+      const isSelected=selected(entry.element);
+      if(isSelected!==entry.isSelected){entry.isSelected=isSelected;entry.selectionMoving=true;}
+      const targetY = isSelected ? -selectionLift() : -weight * hoverLift();
       // Open a reading gap around the pointer. Only the painted faces spread;
       // ownership remains on fixed resting strips, never animated rectangles.
       const targetX = spread && allowed && active && index >= 0 ? spreadOffset(activeRow,index,active.index) / sceneScale : 0;
       const immediate = reduced.matches || reducedMotion();
-      const targetAngle = !immediate && allowed && active?.id === entry.id && !keyboard ? Math.max(-.9, Math.min(.9, (active.coordinate - index) * 1.5)) : 0;
+      const targetAngle = !isSelected && !immediate && allowed && active?.id === entry.id && !keyboard ? Math.max(-.9, Math.min(.9, (active.coordinate - index) * 1.5)) : 0;
       entry.x = immediate ? targetX : approach(entry.x, targetX, dt, 38);
-      entry.y = immediate ? targetY : approach(entry.y, targetY, dt);
+      if(immediate){entry.y=targetY;entry.velocityY=0;entry.selectionMoving=false;}
+      else if(entry.selectionMoving){const next=settleSelection(entry.y,entry.velocityY,targetY,dt);entry.y=next.position;entry.velocityY=next.velocity;}
+      else entry.y=approach(entry.y,targetY,dt);
       entry.angle = immediate ? 0 : approach(entry.angle, targetAngle, dt, 40);
       if (Math.abs(entry.x - targetX) < .025) entry.x = targetX; else pending = true;
-      if (Math.abs(entry.y - targetY) < .025) entry.y = targetY; else pending = true;
+      if (Math.abs(entry.y - targetY) < .025&&Math.abs(entry.velocityY)<.08){entry.y=targetY;entry.velocityY=0;entry.selectionMoving=false;} else pending = true;
       if (Math.abs(entry.angle - targetAngle) < .004) entry.angle = targetAngle; else pending = true;
       if (entry.face) {
         entry.face.style.setProperty('transform', `translate3d(${entry.x.toFixed(3)}px,${entry.y.toFixed(3)}px,0) rotate(${entry.angle.toFixed(3)}deg)`, transformPriority);
@@ -223,7 +246,7 @@ export function createHandHover(root, {
     restingRect(id) {
       if (dirty) measure();
       const entry = entries.find(entry => entry.id === id);
-      return entry && { left: entry.left, top: entry.top - (selected(entry.element) ? selectedLift * sceneScale : 0) };
+      return entry && { left: entry.left, top: entry.top - (selected(entry.element) ? selectionLift() * sceneScale : 0) };
     },
     freeze() { frozen = true; if (frame) window.cancelAnimationFrame(frame); frame = 0; previousTime = null; },
     resume() { frozen = false; pointer = null; keyboard = false; change(null); invalidate(); },

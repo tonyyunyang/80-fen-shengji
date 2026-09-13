@@ -29,7 +29,7 @@ These are small development samples, not a league ranking or proof of general st
 
 ## Current experiment
 
-Current lead/follow requests use `expert-cooperate-zh/en` (v19), adding conservative public counter checks and explicit partnership comparisons to the v16 factual rows. `expert-cooperate-search-zh/en` (v20) also retains the optional eight-sample endgame analysis. Bidding, redeal choices and burial retain v16/v17. The Cloudflare deployment uses v19 without Node analysis. See the [September 13 cooperation study](cooperation-2026-09-13.md) for the targeted gains and the limits of the evidence.
+Current lead/follow requests use `expert-read-zh/en` (v21), adding declaration memory and explicitly uncertain following/counter references to the v19 cooperation facts. `expert-read-search-zh/en` (v22) retains optional eight-sample endgame analysis. Bidding, redeal choices and burial retain v16/v17. The Cloudflare deployment uses v21 without Node analysis. See the [reading study](partnership-reading-2026-09-13.md) and earlier [cooperation study](cooperation-2026-09-13.md) for the results, regressions and limits. Retained v19/v20 observations stay reproducible evaluator baselines.
 
 The retained `expert-facts-zh/en` (v16) joins point destinations and structural facts without recommending a practice-bot move. `expert-search-zh/en` (v17) adds up to eight hypothetical allocations from twelve cards remaining. Allocations satisfy public declarations, known burial, card conservation, proven voids and historical following constraints.
 

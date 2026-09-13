@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeHoverRows, pickHover, approach } from '../public/hand-hover.js';
+import { makeHoverRows, pickHover, approach,settleSelection } from '../public/hand-hover.js';
 
 function hand(count, columns = count) {
   return Array.from({ length: count }, (_, id) => ({ id, left: 40 + id % columns * 34,
@@ -98,4 +98,23 @@ test('a retained hover identity is re-anchored after new cards reorder the hand'
  assert.equal(moved.coordinate-moved.index,active.coordinate-active.index);
  const removed=makeHoverRows(hand(3));assert.equal(anchorHover(removed,active),null);
  const row=spreadHoverRows(reordered,moved)[0];assert.equal(row.items[moved.index].id,active.id);
+});
+
+test('raised selected cards are directly clickable from above without stealing a resting row',()=>{
+  const rows=makeHoverRows(hand(5).map(c=>({...c,isSelected:c.id===2})));
+  assert.equal(pickHover(rows,120,270,null,{selectedLift:48}).id,2);
+  assert.equal(pickHover(rows,120,249,null,{selectedLift:48}),null);
+  assert.equal(pickHover(rows,78,270,null,{selectedLift:48}),null);
+  assert.equal(pickHover(rows,150,330,null,{selectedLift:48}).id,3);
+});
+test('selection motion settles equally across frame rates and reverses from its current pose',()=>{
+  const results=[];
+  for(const hz of [60,120,144]){
+    let value={position:-34,velocity:0};
+    for(let frame=0;frame<hz/2;frame++)value=settleSelection(value.position,value.velocity,-48,1000/hz);
+    assert.ok(Math.abs(value.position+48)<.001);results.push(value.position);
+  }
+  assert.ok(Math.max(...results)-Math.min(...results)<1e-10);
+  const up=settleSelection(-15,-200,-48,16),reversed=settleSelection(up.position,up.velocity,0,0);
+  assert.deepEqual(reversed,up);assert.ok(Number.isFinite(settleSelection(up.position,up.velocity,0,16).position));
 });
