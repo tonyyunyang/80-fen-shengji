@@ -23,6 +23,11 @@ Eighty's visual language combines green felt, a curved brass rail, warm paper, c
 
 Both 25-card and 33-card hands use the same renderer. Hover moves the painted faces while hit testing stays on stable slots. Court art keeps its proportions; pip fields leave space for both index corners.
 
+The main joker figure uses a centered 2:3 frame, and its corner image uses the
+same aspect ratio. This applies to table plays, hands, menus and review cards.
+The SVG atlas fills the CSS background grid without letterboxing; an extra
+SVG margin would otherwise shift the bottom-row joker crops and cut off hats.
+
 The arcade pass studies the [official Balatro press kit](https://www.playbalatro.com/press-kit/), including its [card-reveal animation](https://www.playbalatro.com/press-kit/Gifs/Balatro_gif_1%20.gif) and [gameplay animation](https://www.playbalatro.com/press-kit/Gifs/Balatro_gif_2%20.gif). Flowing ink, foil light and the cadence of score accents inform the implementation. All added shader, surface, particle and sound code is authored for Eighty; this pass adds no downloaded game assets and keeps the existing atlas and title source intact.
 
 ## Contributing art

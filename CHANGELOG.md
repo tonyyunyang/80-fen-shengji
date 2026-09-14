@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep complete joker figures centered at their original aspect ratio, and prevent SVG atlas letterboxing from clipping the bottom-row sprites.
+- Mark the first lead on pair/tractor captions and name the required follow suit, including why level cards must follow a joker lead in no-trump. Game rules are unchanged.
 - Clarify earlier-equal wins in bilingual AI context, separate completed history from the current trick, and include public-inventory kitty bounds and final settlement facts.
 - Composite court/joker ink and paper within one SVG image to avoid light atlas rectangles during mobile/3D rendering; preserve the approved original bitmap.
 - Polish hand interaction over raised faces, preserve the reading gap during stationary clicks, and restore native double-click pair selection through pointer capture.
