@@ -2298,14 +2298,17 @@ body[data-texture='off'] .menu-screen:after {
 }
 .mini .joker-art,
 .hand-slot .joker-art,
-.drag-ghost .joker-art {
-  left: 19cqw;
-  right: 4cqw;
-  top: 7cqw;
-  bottom: 7cqw;
-  width: auto;
-  height: auto;
-  transform: none;
+.drag-ghost .joker-art,
+.menu-art .mini .joker-art {
+  /* An atlas cell is 2:3. Keep the whole figure in that proportion instead
+     of stretching a tall inset box and cropping the SVG's letterboxed row. */
+  left: 22cqw;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  width: 72cqw;
+  height: 108cqw;
+  transform: translateY(-50%);
 }
 .mini .joker-index,
 .hand-slot .joker-index,
@@ -2313,7 +2316,11 @@ body[data-texture='off'] .menu-screen:after {
   left: 2cqw;
   top: 4cqw;
   width: 24cqw;
-  height: 37cqw;
+  height: 36cqw;
+}
+.menu-art .mini .joker-index {
+  width: 18cqw;
+  height: 27cqw;
 }
 .mini .pips,
 .hand-slot .pips,

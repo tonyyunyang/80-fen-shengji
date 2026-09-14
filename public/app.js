@@ -24,7 +24,7 @@ import { createHandDrag } from './hand-drag.js';
 import { handLayout } from './hand-layout.js';
 import { tableLayout, fanOverlap, initialSceneScale, fitScene } from './table-layout.js';
 import { createDealMotion } from './deal-motion.js';
-import { selectionError, selectRange, selectPair, dragCardIds } from './hand-tools.js';
+import { selectionError, followPrompt, selectRange, selectPair, dragCardIds } from './hand-tools.js';
 import { apiSeatFields, connectionFor, setupConnectionsDialog } from './connections-ui.js';
 import { TrickFlow } from './table-flow.js';
 import {
@@ -765,7 +765,7 @@ function handPanel(game) {
         ? pick('你是庄家 · 扣下 8 张底牌', 'You are dealer · bury 8 cards')
         : decision.phase === 'lead'
           ? pick('轮到你领出', 'Your lead')
-          : pick('跟出 ', 'Follow with ') + cardCount(game.plays[0].cards.length);
+          : followPrompt(game);
     const ready =
       decision.phase === 'bury'
         ? pick('选好了，确认扣底', 'Ready to bury')
