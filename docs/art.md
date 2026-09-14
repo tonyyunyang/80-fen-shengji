@@ -14,6 +14,7 @@ Eighty's visual language combines green felt, a curved brass rail, warm paper, c
 - `public/card-glyphs.js`: SVG pixel ranks and suits. Suit shape remains meaningful even with the optional four-color palette.
 - `public/card-art.js`: assembles indices, pips, court illustrations and jokers.
 - `public/assets/cards/pixel-court.webp`: the approved AI-generated 4×4 court/joker/back atlas. Keep this source intact when changing layout.
+- `public/assets/cards/pixel-court-paper.svg`: embeds that original bitmap unchanged and resolves the existing contrast/brightness against warm paper inside one SVG filter. Court cards and both joker sizes use this image so mobile/3D compositing cannot expose an unblended light rectangle. Backs retain the original atlas. Regenerate with `node scripts/build-card-paper.mjs`; this does not repaint or overwrite the source.
 - `public/pixel-view.js`, `public/pixel.css`: portraits, paper, felt, shadows and table details.
 - `public/atmosphere.js`: original procedural ink shader, with bounded native WebGL rendering and a static CSS fallback.
 - `public/effects.css`, `public/table-effects.js`, `public/effect-flow.js`: original foil gradients, arcade surfaces, public-event flourishes and their presentation-only timing.

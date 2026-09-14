@@ -150,7 +150,7 @@ test('inconsistent revealed-card evidence stays uncertain, and oversized menus k
 test('runtime upgrades card play while preserving declaration, redeal and burial profiles',async()=>{
   const seen=new Set(),session=new Session({env:{QWEN_API_KEY:'fixture',QWEN_BASE_URL:'https://example.invalid/v1'},providerCall:async(view,seat,options)=>{
     seen.add(view.phase);
-    assert.equal(options.contextProfile,['lead','follow'].includes(view.phase)?'expert-read-zh':'expert-facts-zh');
+    assert.equal(options.contextProfile,['lead','follow'].includes(view.phase)?'expert-audit-zh':'expert-facts-zh');
     return {action:choosePeilian(view,options.decisionId,{deterministic:true}),usage:{input:0,output:0,cached:0,cacheWrite:0},ms:0,simulated:true};
   }});
   session.config=validateConfig({dealing:'ordered',seats:Array.from({length:4},()=>({kind:'api',provider:'qwen',model:'fixture',endgameAnalysis:false}))},{qwen:true});

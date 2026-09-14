@@ -78,7 +78,11 @@ export class FixtureBroker extends SponsoredAI {
     return sponsoredRequest(request,this.env,this.ctx.storage,async(_url,options)=>{
       const body=JSON.parse(options.body),fn=body.tools?.[0]?.function;
       const props=fn?.parameters?.properties||{},view=JSON.parse(body.messages[1].content);
-      if(['lead','follow'].includes(view.phase)&&(!view.cooperation||!view.partnershipRead||view.v!==21))throw new Error('Expected partnership reading in the hosted card-play request');
+      if(['lead','follow'].includes(view.phase)){
+        if(!view.cooperation||!view.partnershipRead||!view.trickAudit||view.v!==23)throw new Error('Expected audited partnership context in the hosted card-play request');
+        const ids=[...view.history,...view.trick].flatMap(([,cards])=>cards.map(([id])=>id));
+        if(new Set(ids).size!==ids.length)throw new Error('Completed history must not repeat current-trick cards');
+      }
       const args=props.choice?{choice:'pass'}:props.accept?{accept:false}:props.move_id?{move_id:props.move_id.enum?.[0]||0}:{card_ids:view.phase==='lead'?[view.hand[0][0]]:[]};
       return Response.json({id:this.env.SPONSOR_ALIBABA_API_KEY,choices:[{message:{tool_calls:[{id:'fixture',type:'function',function:{name:fn?.name||'fixture',arguments:JSON.stringify(args)}}]}}],usage:{prompt_tokens:10,completion_tokens:4}});
     });

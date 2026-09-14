@@ -750,6 +750,7 @@ body[data-four-color='on'] .face[data-suit='C'] {
   image-rendering: pixelated;
 }
 .illustration {
+  background-image: url('/assets/cards/pixel-court-paper.svg');
   position: absolute;
   left: 29px;
   right: 6px;
@@ -763,6 +764,7 @@ body[data-four-color='on'] .face[data-suit='C'] {
   bottom: 7px;
 }
 .joker-index {
+  background-image: url('/assets/cards/pixel-court-paper.svg');
   position: absolute;
   left: 2px;
   top: 4px;
@@ -2290,8 +2292,9 @@ body[data-texture='off'] .menu-screen:after {
   height: 96cqw;
   transform: translateY(-50%);
   clip-path: inset(1%);
-  filter: contrast(1.14) brightness(1.1);
-  mix-blend-mode: multiply;
+  /* Paper and ink are composited inside the SVG before any card transforms. */
+  filter: none;
+  mix-blend-mode: normal;
 }
 .mini .joker-art,
 .hand-slot .joker-art,

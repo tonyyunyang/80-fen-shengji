@@ -2,7 +2,7 @@
 
 Status: implemented. Contracts are updated alongside their implementation. Source of truth for wire fields: `src/game.js`, `src/providers.js`, `server/session.js`.
 
-Continuous dealing is implemented for zero or one human. Shared-device multi-human games retain the ordered handoff mode. API card play uses bilingual partnership reading v21, or v22 with optional Node analysis; declarations, redeal choices and burial retain v16/v17. Chinese is the default, and English is selectable per seat. Legacy advice flags no longer affect normal play. The action protocol retains concurrent declaration bindings and private live-deal accounting. Context versions below describe retained evaluation profiles as well as current play.
+Continuous dealing is implemented for zero or one human. Shared-device multi-human games retain the ordered handoff mode. API card play uses bilingual audited partnership context v23, or v24 with optional Node analysis; declarations, redeal choices and burial retain v16/v17. Chinese is the default, and English is selectable per seat. Legacy advice flags no longer affect normal play. The action protocol retains concurrent declaration bindings and private live-deal accounting. Context versions below describe retained evaluation profiles as well as current play.
 
 ## Decision and action
 
@@ -34,7 +34,18 @@ The historical ordered mode still binds each declaration to a sequential pending
 
 `notebook` is computed by `src/notebook.js` solely from the supplied seat observation. Before trump is settled it is null. Once settled it provides both-copy joker counts, effective-suit counts, highest possible unplayed and outside-hand faces (including ties), unlocated face counts, the acting hand’s pairs/tractors, proved suit voids with public trick evidence, per-seat public lead/win/point histories, and the current trick’s leading seat/points/remaining seats. Current plays are deduplicated against history. A remaining face is a possibility; unlocated cards include other hands **and the unknown kitty**. No hidden ownership or win probability is inferred. Only the dealer’s known burial can be excluded.
 
-The stable strategy prompt asks for brief tactical comparison: team goal, partner currently winning, players still to act, exposed points, trump control, preserving pairs/tractors and the final trick. It does not reveal private state or include quiz answers. The complete legal menu remains complete and unranked. Output contains only the action, using the native tool or the documented Kimi JSON route; the shared 12-second deadline is unchanged. Normal lead/follow requests use `expert-read-zh/en` (v21), or `expert-read-search-zh/en` (v22) with analysis enabled. Other phases retain `expert-facts-zh/en` (v16) or `expert-search-zh/en` (v17). Earlier profiles remain evaluator options. Request metadata records the actual context version for every attempt.
+The stable strategy prompt asks for brief tactical comparison: team goal, partner currently winning, players still to act, exposed points, trump control, preserving pairs/tractors and the final trick. It does not reveal private state or include quiz answers. The complete legal menu remains complete and unranked. Output contains only the action, using the native tool or the documented Kimi JSON route; the shared 12-second deadline is unchanged. Normal lead/follow requests use `expert-audit-zh/en` (v23), or `expert-audit-search-zh/en` (v24) with analysis enabled. Other phases retain `expert-facts-zh/en` (v16) or `expert-search-zh/en` (v17). Earlier profiles remain evaluator options. Request metadata records the actual context version for every attempt.
+
+## Rule and point accounting audit (v23/v24)
+
+v23/v24 retains the partnership reading layer and separates completed
+`history` from the current `trick`. `trickAudit` identifies legal actions that
+tie the current winner, which cannot overtake an earlier equal play. It adds
+known or conservative publicly derived kitty point bounds, and closing
+last-trick results including the multiplier when calculable. Unlocated
+inventory is never treated as an actual hidden allocation. Incomplete counts
+produce null bounds. Earlier profiles retain their original wire history and
+prompt. See the [audit](research/context-audit-2026-09-14.md).
 
 ## Public partnership reading (v21/v22)
 
@@ -119,6 +130,6 @@ Local installations can explicitly import a pre-session checkpoint through `/api
 
 ## Partnership context (v8) and experimental search (v9)
 
-Normal API decisions use v17 (v16 when analysis is disabled): the v8 partnership facts and complete action contract, plus a bilingual strategy guide covering entries, purposeful trump leads, point feeding, structural cost, burial and the final trick. The language setting changes the system prose; JSON keys, public facts and tool schemas stay identical. The goal is team wins, with no move-agreement reward. Endgame analysis is enabled by default as a clearly labeled experiment, switchable per seat. Eight plausible endings are compared from twelve cards remaining; an isolated worker has a 1.2-second local budget and inherits no credentials. A busy or incomplete analysis is omitted; it never blocks the server’s dealing clock. The shared 12-second model deadline includes this work. Earlier advice, sampling and joined-row variants remain historical evaluator profiles. See [the current study](research/ai-evaluation.md). No version sends actual other hands, unknown kitty, shuffle seeds or quizzes.
+The earlier v17 profile (v16 without analysis) introduced: the v8 partnership facts and complete action contract, plus a bilingual strategy guide covering entries, purposeful trump leads, point feeding, structural cost, burial and the final trick. The language setting changes the system prose; JSON keys, public facts and tool schemas stay identical. The goal is team wins, with no move-agreement reward. Endgame analysis is enabled by default as a clearly labeled experiment, switchable per seat. Eight plausible endings are compared from twelve cards remaining; an isolated worker has a 1.2-second local budget and inherits no credentials. A busy or incomplete analysis is omitted; it never blocks the server’s dealing clock. The shared 12-second model deadline includes this work. Earlier advice, sampling and joined-row variants remain historical evaluator profiles. See [the current study](research/ai-evaluation.md). No version sends actual other hands, unknown kitty, shuffle seeds or quizzes.
 
 Evaluator callers can explicitly request bounded Qwen 3.8 thinking budgets or a compatible Chat Completions reasoning-effort value. A thinking budget must reserve at least 128 output tokens for the action and cannot be combined with reasoning effort. These experiments never raise the shared 12-second deadline or silently enable native reasoning flags for an unknown model. Request metadata records the actual output cap, requested reasoning settings and safe argument-value types; raw completion text is not retained.
