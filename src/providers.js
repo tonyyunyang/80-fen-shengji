@@ -5,6 +5,7 @@ let analysisModule;
 const loadAnalysis = () => analysisModule ||= import(new URL('./analysis-worker.js', import.meta.url).href);
 import { buildExpertFacts, EXPERT_FACTS_PROMPT } from './expert-facts.js';
 import { expertPrompt } from './expert-prompt.js';
+import { buildTrickAudit, TRICK_AUDIT_PROMPT } from './trick-audit.js';
 import {buildCooperationContext,COOPERATION_PROMPT,cooperationWinPrompt} from './cooperation-context.js';
 import {buildPartnershipRead,PARTNERSHIP_READ_PROMPT,pointFeedPrompt} from './partnership-read.js';
 import { createHash } from 'node:crypto';
@@ -14,7 +15,7 @@ import { classify, pairCount, longestTractor, enumerateLegalFollows } from './ru
 import { effectiveSuit } from './cards.js';
 import { assertTokenPlanModel, tokenPlanRequestOptions, kimiCodeRequestOptions } from './model-catalog.js';
 import { redact } from './redact.js';
-import { buildNotebook } from './notebook.js';
+import { buildNotebook, publicPlays } from './notebook.js';
 import { buildDecisionContext } from './decision-context.js';
 import { buildStrategyContext } from './strategy-context.js';
 import { buildActionContext, constrainToolToObservation } from './action-context.js';
@@ -30,14 +31,17 @@ const contextVersions = new Map(Object.entries({
   'decision-first-advised': 12, 'partnership-plan': 13, 'partnership-plan-search': 14, 'expert-zh': 15, 'expert-en': 15, 'expert-facts-zh': 16, 'expert-facts-en': 16, 'expert-search-zh': 17, 'expert-search-en': 17, 'expert-search-wide-zh': 18,
   'expert-cooperate-zh':19,'expert-cooperate-en':19,'expert-cooperate-search-zh':20,'expert-cooperate-search-en':20,
   'expert-read-zh':21,'expert-read-en':21,'expert-read-search-zh':22,'expert-read-search-en':22,
+  'expert-audit-zh':23,'expert-audit-en':23,'expert-audit-search-zh':24,'expert-audit-search-en':24,
 }));
 export const CONTEXT_PROFILES = Object.freeze([...contextVersions.keys()]);
 export const contextVersion = (profile = 'partnership') => contextVersions.get(profile) ?? 3;
-const readProfile=profile=>profile.startsWith('expert-read-');
+const auditProfile=profile=>profile.startsWith('expert-audit-');
+const readProfile=profile=>profile.startsWith('expert-read-')||auditProfile(profile);
 const cooperationProfile=profile=>profile.startsWith('expert-cooperate-')||readProfile(profile);
-const searchProfile=profile=>profile.startsWith('expert-search-')||profile.startsWith('expert-cooperate-search-')||profile.startsWith('expert-read-search-');
+const searchProfile=profile=>profile.startsWith('expert-search-')||profile.startsWith('expert-cooperate-search-')||profile.startsWith('expert-read-search-')||profile.startsWith('expert-audit-search-');
 const factsProfile=profile=>profile.startsWith('expert-facts-')||searchProfile(profile)||cooperationProfile(profile);
 const teamProfiles = ['expert-read-zh','expert-read-en','expert-read-search-zh','expert-read-search-en','expert-cooperate-zh','expert-cooperate-en','expert-cooperate-search-zh','expert-cooperate-search-en','expert-search-wide-zh','expert-search-zh','expert-search-en','expert-zh','expert-en','expert-facts-zh','expert-facts-en','partnership','search','partnership-advised','decision-first','decision-first-advised','partnership-plan','partnership-plan-search'];
+teamProfiles.push('expert-audit-zh','expert-audit-en','expert-audit-search-zh','expert-audit-search-en');
 const briefProfiles = ['decision-first','decision-first-advised'];
 const actionProfiles = ['strategic-v2','coached',...teamProfiles];
 export function followMoves(view) {
@@ -88,6 +92,11 @@ export function compactObservation(view, moves = followMoves(view), contextProfi
   if (factsProfile(contextProfile)) result.expertFacts = buildExpertFacts(view, moves, result);
   if(cooperation?.rows.length)result.expertFacts.moves=result.expertFacts.moves.map((row,i)=>({...row,...cooperation.rows[i]}));
   const read=readProfile(contextProfile)?buildPartnershipRead(view,moves,{...result,cooperation:cooperation?.context}):null;
+  if (auditProfile(contextProfile)) {
+    const currentIds = new Set(view.plays.flatMap(play => play.cards.map(card => card.id)));
+    result.history = publicPlays(view).filter(play => !play.cards.some(card => currentIds.has(card.id))).map(play => [play.seat, cards(play.cards)]);
+    result.trickAudit = buildTrickAudit(view, moves);
+  }
   if (searchProfile(contextProfile)) result.endgameEstimates = endgameOverride === undefined ? buildEndgameEstimates(view, moves, {maxHand:12,samples:contextProfile==='expert-search-wide-zh'?32:8}) : endgameOverride;
   if (['coached','partnership-advised','decision-first-advised','partnership-plan','partnership-plan-search'].includes(contextProfile)) result.referenceAdvice = buildAdvisorContext(view, moves, toolFor(view.phase, moves));
   if (briefProfiles.includes(contextProfile)) return decisionFirstObservation(view, result, moves);
@@ -187,6 +196,7 @@ export function buildRequest(view, seat, { env = process.env, maxOutput = 512, f
       '\nendgameEstimates compares the same hypothetical allocations consistent with public play, never real hidden hands or calibrated win probabilities. Each simulated continuation uses a fast local policy seeing only its own hypothetical observation. sampledTeamWins counts partnership deal wins, not agreement with that policy. Compare team outcomes and attacker totals, then check public tactical facts; all legal actions remain available.';
     if(cooperationProfile(contextProfile))guide+=cooperationWinPrompt(compact.cooperation,language);
     if(readProfile(contextProfile))guide+='\n'+PARTNERSHIP_READ_PROMPT[language]+pointFeedPrompt(compact.partnershipRead,compact.cooperation,language);
+    if(auditProfile(contextProfile))guide+='\n'+TRICK_AUDIT_PROMPT[language];
   }
   const prompt=guide?guide+'\nActive rule settings: '+JSON.stringify(view.rules)+activeContract:standardPrompt;
   if (!seat.model?.trim()) throw new Error('请为 API 座位填写模型 ID');

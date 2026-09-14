@@ -21,6 +21,14 @@ Only its own hand and permitted public information: current trump, team identiti
 
 The default guide is Chinese; English is available per seat. Both use corresponding system prose with the same facts and action schema. The target is team wins, then score/level outcome—not matching the practice bot's move.
 
+The guide explicitly states that earlier equal plays win, including identical
+copies and equal-order level cards. Current trick facts identify equal moves
+that cannot overtake the existing winner. Completed history and the current
+trick are separate, preventing duplicate card/point counting. Kitty points are
+known only to the burier or bounded conservatively from the public inventory;
+the last action's settlement includes the kitty multiplier when calculable.
+See the [context audit](research/context-audit-2026-09-14.md).
+
 Card play now includes explicit partnership comparisons: whether a teammate's winning card can still be beaten, safe point feeds, cheaper support that preserves the teammate's lead, and covers that protect points or secure the 80-point threshold. Public leads and proven voids help interpret previous play; they are not treated as secret signals. These comparisons guide the model without replacing its choice or removing legal actions.
 
 The reading layer also identifies likely point-cashing windows before the last opponent plays. It keeps a chronological ledger of accepted declarations and overcalls, including exposed cards that were later played. A called suit alone does not prove length. Exact deductions remain separate from a uniform-allocation reference for following/ruff risks; those estimates are neither known hands nor calibrated probabilities. Short point holdings, entries, structures and opportunities for a void partner to discard inform the whole-hand plan. Known voids and zero-point tricks receive explicit risk/cost reminders. See the [reading study](research/partnership-reading-2026-09-13.md).

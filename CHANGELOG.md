@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clarify earlier-equal wins in bilingual AI context, separate completed history from the current trick, and include public-inventory kitty bounds and final settlement facts.
+- Composite court/joker ink and paper within one SVG image to avoid light atlas rectangles during mobile/3D rendering; preserve the approved original bitmap.
 - Polish hand interaction over raised faces, preserve the reading gap during stationary clicks, and restore native double-click pair selection through pointer capture.
 - Continue cancelled-card motion smoothly into the hand, including partial re-grabs while other cards finish returning.
 - Enable music and all table sounds by default, starting after the first interaction; retain saved mute choices and independent volume controls.
