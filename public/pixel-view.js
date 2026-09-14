@@ -80,10 +80,11 @@ export function trickMarkup(game,motion,narrow=false) {
     const position=relativePosition(game,play.seat),visible=play.cards.slice(0,narrow?2:4),shape=classify(play.cards,game.trump);
     const type=({single:t('单张'),pair:t('对子'),tractor:t('拖拉机'),throw:order===0?t('甩牌'):t('散牌')})[shape?.type]||t('跟牌');
     const turn=order===0?t('领出'):t('跟牌');
+    const description=type===turn?turn:turn+' · '+type;
     // Keep the visible caption short enough to retain the seat name on phones.
     // The accessible label below still gives both turn role and full structure.
     const caption=order===0?turn:shape?.type==='pair'||shape?.type==='tractor'?type:turn;
-    return `<div class="played-slot ${position}" data-live-style data-position="${position}" data-trick="${index}" data-seat="${play.seat}" data-shape="${shape?.type||'single'}" data-key="trick-${tableScope(game)}:${index}:${play.seat}" data-phase="${motion?.phase||'play'}"${motion?` data-winner="${relativePosition(game,motion.trick.winner)}"`:''}><button class="played-fan" data-review-trick="${index}" aria-label="${escape(seatLabel(game,play.seat)+' · '+turn+' · '+type+' · '+play.cards.map(cardLabel).join(' '))}">`+
+    return `<div class="played-slot ${position}" data-live-style data-position="${position}" data-trick="${index}" data-seat="${play.seat}" data-shape="${shape?.type||'single'}" data-key="trick-${tableScope(game)}:${index}:${play.seat}" data-phase="${motion?.phase||'play'}"${motion?` data-winner="${relativePosition(game,motion.trick.winner)}"`:''}><button class="played-fan" data-review-trick="${index}" aria-label="${escape(seatLabel(game,play.seat)+' · '+description+' · '+play.cards.map(cardLabel).join(' '))}">`+
       visible.map(card=>`<span class="flip-card" data-key="played-${card.id}"><span class="flip-inner"><span class="card-front">${mini(card)}</span>${cardBack()}</span></span>`).join('')+
       (visible.length<play.cards.length?`<span class="fan-overflow">+${play.cards.length-visible.length}</span>`:'')+`</button><span class="play-caption"><span class="play-seat">${escape(playerName(game,play.seat))}</span><span> · ${caption} · ${cardCount(play.cards.length)}</span></span></div>`;
   }).join('');
